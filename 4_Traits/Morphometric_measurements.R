@@ -64,5 +64,5 @@ library(dplyr)
  behaviour <- behaviour[c("scientificName", "nest_guild", "diet_range", "activity")]
  DB_data <- left_join(DB_data, morphometrics_mean, by = "scientificName") 
  DB_data <- left_join(DB_data, behaviour, by = "scientificName")
-#write.table(DB_data, "Scarabaeinae_database_2024.txt")
+#write.table(morphometrics, "morphometrics.txt")
  
