@@ -1,4 +1,4 @@
-# Protocol to obtain the elevation range of species/morphospecies based on GBIF
+# Protocol to obtain the elevation range and standardized elevation of species/morphospecies based on GBIF
 # records, SIB_col, collections and literature
 #
   setwd("C:/Users/Dell-PC/Dropbox/CO_DBdata")
