@@ -24,14 +24,14 @@
 # GBIF search #
     result <- occ_data(scientificName = species, hasCoordinate = TRUE, synonym = TRUE)
     data_list <- lapply(result, function(x) x$data)
-    records <- bind_rows(data_list, .id = "scientificName")
+    records <- bind_rows(data_list, .id = "scientificName1")
     #names(records)
     #write.table(records, "GBIF_2024-02-13.txt", row.names = FALSE, sep=";")
 #
 # Check records #
 #
 # subset records of Deltochilum carinatum
-    d_car <- data.frame(subset(records, scientificName == "Deltochilum carinatum"))
+    d_car <- data.frame(subset(records, scientificName1 == "Deltochilum carinatum"))
     View(d_car)
 #
 # base maps #
