@@ -23,8 +23,9 @@
 # List of synonyms
     synonym_search <- list()
     for (sp in species_list) {
-      result <- name_lookup(query = sp, rank = "species", status = "SYNONYM")$data
+      result<- name_lookup(query = sp, rank = c("species", "subspecies"), status = "SYNONYM")$data
       if (!is.null(result)) {
+        result$scientificName1 <- sp
         synonym_search[[sp]] <- result
       }
     }
@@ -35,23 +36,30 @@
       return(x)
     })
     all_synonyms <- do.call(rbind, synonym_search)
+    rownames(all_synonyms) <- NULL
+    #saveRDS(all_synonyms, "all_synonyms")
+    #write.table(all_synonyms, "all_syonyms.txt")
     synonym_list <- unique(sort(all_synonyms$canonicalName))
 # Species, morfospecies and synonyms list
     all_taxa <- sort(unique(c(species_list, synonym_list)))
 #
 # GBIF search #
-    result <- occ_data(scientificName = all_taxa, limit=1000, hasCoordinate = TRUE)
+    result <- occ_data(scientificName = all_taxa, limit=15000, hasCoordinate = TRUE)
     data_list <- lapply(result, function(x) x$data)
     records <- data.frame(bind_rows(data_list, .id = "scientificName"))
     list_cols <- sapply(records, is.list)  #convert columns list in characters
     records[list_cols] <- lapply(records[list_cols], function(x) sapply(x, toString))
-    canonical_names <- all_synonyms$canonicalName[match(records$species, all_synonyms$species)]
+    #saveRDS(records, "GBIF_2024-09-21.rds")
+    #write.table(records, "GBIF_2024-09-21.txt", row.names = FALSE, sep=",")
+    #
+  # Update species name by GBIF Backbone Taxonomy
+    canonical_names <- all_synonyms$canonicalName[match(records$scientificName, all_synonyms$canonicalName)]
+    accepted_names <- all_synonyms$scientificName1[match(records$scientificName, all_synonyms$canonicalName)]
+        # Actualizar la columna scientificName1 en records
     records <- records %>%
       mutate(
-        scientificName1 = if_else(scientificName == canonical_names, scientificName, species)
+        scientificName1 = if_else(!is.na(canonical_names), accepted_names, scientificName)
       )
-    #saveRDS(records, "GBIF_2024-09-13.rds")
-    #write.table(records, "GBIF_2024-09-13.txt", row.names = FALSE, sep=",")
     records$coordinates <- paste(records$decimalLatitude, records$decimalLongitude, sep="_")
     records <- records[!is.na(records$coordinates) & !duplicated(records[c("species", "coordinates")]), ]
     #

@@ -7,274 +7,193 @@ setwd("C:/Users/Dell-PC/Dropbox/CO_DBdata/GBIF_data")
   library(sf)
   library(readxl)
 #
-# GBIF dataset, morphospecies SIB-Col and upload records for species
-    GBIF <- read_excel("GBIF_2024-02-13.xlsx", sheet = "GBIF_2024-02-13")
-      GBIF$coordenadas <- paste(GBIF$decimalLongitude, GBIF$decimalLatitude, sep = "_")
+# Records from GBIF and entomological collections
+  #  
+  # GBIF dataset
+    all_synonyms <- readRDS("all_synonyms.rds")    
+    GBIF <- readRDS("GBIF_2024-09-21.rds")
+    # Updated species names by GBIF Backbone Taxonomy
+    canonical_names <- all_synonyms$canonicalName[match(GBIF$scientificName, all_synonyms$canonicalName)]
+    accepted_names <- all_synonyms$scientificName1[match(GBIF$scientificName, all_synonyms$canonicalName)]
+    GBIF <- GBIF %>%
+      mutate(
+      scientificName1 = if_else(!is.na(canonical_names), accepted_names, scientificName)
+      )
+    GBIF$coordinates <- paste(GBIF$decimalLongitude, GBIF$decimalLatitude, sep="_")
+    GBIF <- GBIF[!is.na(GBIF$coordinates) & !duplicated(GBIF[c("scientificName1", "coordinates")]), ]
+  #
+  # Collections dataset
     SIB_COL <- read_excel("DB-Col_2024-01-23.xlsx", sheet = "Conjunto-2020-07-23")
-      SIB_COL$coordenadas <- paste(SIB_COL$decimalLongitude, SIB_COL$decimalLatitude, sep = "_")
+      SIB_COL$coordinates <- paste(SIB_COL$decimalLongitude, SIB_COL$decimalLatitude, sep = "_")
       SIB_COL$scientificName1 <- paste(SIB_COL$identificationRemarks)
-    at_aeneomicans <- read_excel("at_aeneomicans.xlsx", sheet = "at_aeneomicans")
-      at_aeneomicans$coordenadas <- paste(at_aeneomicans$decimalLongitude, at_aeneomicans$decimalLatitude, sep = "_") 
-      at_aeneomicans$scientificName1 <- paste(at_aeneomicans$genus, at_aeneomicans$specificEpithet)
-      at_aeneomicans <- at_aeneomicans[!duplicated(at_aeneomicans$coordenadas), ]
-    c_juvencus <- read_excel("c_juvencus.xlsx", sheet = "c_juvencus")
-      c_juvencus$coordenadas <- paste(c_juvencus$decimalLongitude, c_juvencus$decimalLatitude, sep = "_")
-      c_juvencus$scientificName1 <- paste(c_juvencus$scientificName)
-      c_juvencus <- mutate(c_juvencus, scientificName1 = ifelse(scientificName1 == "Canthon juvencus Harold, 1868", "Canthon juvencus", scientificName1))
-      c_juvencus <- mutate(c_juvencus, scientificName1 = ifelse(scientificName1 == "Canthon raripilus Bates, 1887", "Canthon juvencus", scientificName1))
-      c_juvencus <- mutate(c_juvencus, scientificName1 = ifelse(scientificName1 == "BOLD:ABU7370", "Canthon juvencus", scientificName1))
-      c_juvencus <- c_juvencus[!duplicated(c_juvencus$coordenadas), ]
-    cps_corythus <- read_excel("c_corythus.xlsx", sheet = "c_corythus")
-      cps_corythus$coordenadas <- paste(cps_corythus$decimalLongitude, cps_corythus$decimalLatitude, sep = "_")
-      cps_corythus$scientificName1 <- paste(cps_corythus$genus, cps_corythus$specificEpithet)
-      cps_corythus <- mutate(cps_corythus, scientificName1 = ifelse(scientificName1 == "Coprophanaeus telamon", "Coprophanaeus corythus", scientificName1)) # replace names
-      cps_corythus <- cps_corythus[!duplicated(cps_corythus$coordenadas), ]
-    d_guildingii <- read_excel("d_guildingii.xlsx", sheet = "d_guildingii")
-      d_guildingii$coordenadas <- paste(d_guildingii$decimalLongitude, d_guildingii$decimalLatitude, sep = "_")
-      d_guildingii$scientificName1 <- paste(d_guildingii$genus, d_guildingii$specificEpithet)
-      d_guildingii <- d_guildingii[!duplicated(d_guildingii$coordenadas), ]
-    di_agenor <- read_excel("d_agenor.xlsx", sheet = "d_agenor")
-      di_agenor[, c("decimalLongitude", "decimalLatitude")] <- lapply(di_agenor[, c("decimalLongitude", "decimalLatitude")], as.numeric)
-      di_agenor$coordenadas <- paste(di_agenor$decimalLongitude, di_agenor$decimalLatitude, sep = "_")
-      di_agenor$scientificName1 <- paste(di_agenor$genus, di_agenor$specificEpithet)
-      di_agenor <- di_agenor[!duplicated(di_agenor$coordenadas), ]
-    d_gazella <- read_excel("d_gazella.xlsx", sheet = "d_gazella")
-      d_gazella$coordenadas <- paste(d_gazella$decimalLongitude, d_gazella$decimalLatitude, sep = "_")
-      d_gazella$scientificName1 <- paste(d_gazella$genus, d_gazella$specificEpithet)
-      d_gazella <- mutate(d_gazella, scientificName1 = ifelse(scientificName1 == "Digitonthophagus NA", "Digitonthophagus gazella", scientificName1)) # replace NA for gazella in the specific epithet
-      d_gazella <- d_gazella[!duplicated(d_gazella$coordenadas), ]
-    eury_camero <- read_excel("eury_camero.xlsx", sheet = "Hoja1")
-      eury_camero$coordenadas <- paste(eury_camero$decimalLongitude, eury_camero$decimalLatitude, sep = "_")
-      eury_camero$scientificName1 <- paste(eury_camero$genus, eury_camero$specificEpithet)
-    o_acuminatus <- read_excel("o_acuminatus.xlsx", sheet = "o_acuminatus")
-      o_acuminatus$coordenadas <- paste(o_acuminatus$decimalLongitude, o_acuminatus$decimalLatitude, sep = "_")
-      o_acuminatus$scientificName1 <- paste(o_acuminatus$genus, o_acuminatus$specificEpithet)
-      o_acuminatus <- mutate(o_acuminatus, scientificName1 = ifelse(scientificName1 == "Onthophagus NA", "Onthophagus acuminatus", scientificName1)) # replace NA for acuminatus in the specific epithet
-      o_acuminatus <- o_acuminatus[!duplicated(o_acuminatus$coordenadas), ]
-      o_curvicornis <- read_excel("o_curvicornis.xlsx", sheet = "o_curvicornis")
-    o_curvicornis$coordenadas <- paste(o_curvicornis$decimalLongitude, o_curvicornis$decimalLatitude, sep = "_")
-      o_curvicornis$scientificName1 <- paste(o_curvicornis$genus, o_curvicornis$specificEpithet)
-      o_curvicornis <- o_curvicornis[!duplicated(o_curvicornis$coordenadas), ]
-    s_aequinoctialis <- read_excel("s_aequinoctialis.xlsx", sheet = "s_aequinoctialis")
-      s_aequinoctialis$coordenadas <- paste(s_aequinoctialis$decimalLongitude, s_aequinoctialis$decimalLatitude, sep = "_")
-      s_aequinoctialis$scientificName1 <- paste(s_aequinoctialis$genus, s_aequinoctialis$specificEpithet)
-      s_aequinoctialis <- s_aequinoctialis[!duplicated(s_aequinoctialis$coordenadas), ]
-#
-# clean
-    GBIF <- GBIF[GBIF$coordenadas != "-74.266667_4.05", ] # delete recrods of An. villosus in páramo
-  registros <- merge(GBIF, at_aeneomicans, by = intersect(names(GBIF), names(at_aeneomicans)), all = TRUE) # add records of at_aeneomicans
-  registros <- registros[registros$coordenadas != "-5.983333_-2.416667", ] # Remove records of A. irinus in the ocean
-  registros <- registros[registros$coordenadas != "-74.855_2.7975", ] # Remove atypic records of A. irinus
-    cdm_on <- data.frame(subset(SIB_COL, identificationRemarks == "Canthidium sp. 36H")) # Select records of Canthidium onitoides from "morphospecies unification with SIB "DB-Col-2022-07-23"
+      SIB_COL <- SIB_COL[!is.na(SIB_COL$coordinates) & !duplicated(SIB_COL[c("scientificName1", "coordinates")]), ]
+    #
+# cleaning
+  records <- GBIF
+  records <- records[records$coordinates != "-74.266667_4.05", ] # Delete records of A. villosus, C. juvencus, C. telamon and P. haroldi from páramo
+    at_iri <- subset(SIB_COL, identificationRemarks == "Ateuchus irinus") # elect records of A. irinus of Nariño from "morphospecies unification with SIB "DB-Col-2022-07-23"
+  records <- merge(records, at_iri, by = intersect(names(records), names(at_iri)), all = TRUE) # add records for C onitoides
+  records <- records[!(records$scientificName1=="Ateuchus irinus" & records$coordinates %in% c("-5.983333_-2.416667", "-74.855_2.7975")),] # Delete A. irinus records from Ocean
+  records <- records[!(records$scientificName1=="Ateuchus murrayi" & records$coordinates == "-5.983333_-2.416667"), ]  
+    cdm_on <- data.frame(subset(SIB_COL, identificationRemarks == "Canthidium sp. 36H")) # Select records of Canthidium onitoides from "morphospecies unification SIB "DB-Col-2022-07-23"
     cdm_on <- mutate(cdm_on, scientificName1 = ifelse(scientificName1 == "Canthidium sp. 36H", "Canthidium onitoides", scientificName1))  # replace names
-    cdm_on <- cdm_on[!duplicated(cdm_on$coordenadas), ]
-  registros <- merge(registros, cdm_on, by = intersect(names(registros), names(cdm_on)), all = TRUE) # add records for C onitoides
+  records <- merge(records, cdm_on, by = intersect(names(records), names(cdm_on)), all = TRUE) # add records for C onitoides
     ctn_fu <- subset(SIB_COL, identificationRemarks =="Canthon fulgidus")# Select records of Canthon fulgidus from "morphospecies unification with SIB "DB-Col-2022-07-23"
     ctn_fu <- mutate(ctn_fu, scientificName1 = ifelse(scientificName1 == "Canthon fulgidus", "Canthon fulgidus martinezi", scientificName1)) # replace names
-    ctn_fu <- ctn_fu[!duplicated(ctn_fu$coordenadas), ]
-  registros <- merge(registros, ctn_fu, by = intersect(names(registros), names(ctn_fu)), all=TRUE)# add records for C. fulgidus martinezi
-  registros <- merge(registros, c_juvencus, by = intersect(names(registros), names(c_juvencus)), all = TRUE) # add records for C. juvencus
-  registros <- registros[!(registros$scientificName1=="Canthon juvencus" & registros$coordenadas %in% c("-74.25_4.05", "-75.078596_6.913269", "-72.536611_11.145056")), ] # Remove atypical altitudinal records of C. juvencus
+  records <- merge(records, ctn_fu, by = intersect(names(records), names(ctn_fu)), all=TRUE)# add records for C. fulgidus martinezi
+    c_juv <- data.frame(subset(SIB_COL, identificationRemarks == "Canthon juvencus")) # Select records of Canthon juvencus from "morphospecies unification SIB "DB-Col-2022-07-23" our data
+  records <- merge(records, c_juv, by = intersect(names(records), names(c_juv)), all=TRUE)# add records for C. juvencus
+  records <- records[!(records$scientificName1=="Canthon juvencus" & records$coordinates %in% 
+                    c("-75078_10823", "-74907_9027", "-74831_4936", "-74.84_9741",
+                      "-75.07859583_6.913268902","NA_NA")),] # Remove atypical records of C. juvencus
     ctn_li <- data.frame(subset(SIB_COL, scientificName1 == "Canthon lituratus")) # Select records of Canthon lituratus from "morphospecies unification with SIB "DB-Col-2022-07-23"
-    ctn_li <- ctn_li[!duplicated(ctn_li$coordenadas), ]
-  registros <- merge(registros, ctn_li, by = intersect(names(registros), names(ctn_li)), all = TRUE) # add records for C lituratus
-  registros <- registros[!(registros$scientificName1=="Canthon lituratus" & registros$coordenadas %in% c("-75078_10823","-74.84_9741", "-59.83333333_-2.416666667", "-74.083333_11.116667")),] # Remove atypical altitudinal records of C. lituratus
-  registros <- registros[!(registros$scientificName1=="Canthon luteicollis" & registros$stateProvince %in% c("Arauca", "Casanare", "Vichada")),] # Remove records of C. luteicollis from Orinoquia
-  registros <- registros[!(registros$scientificName1=="Canthon luteicollis" & registros$coordenadas == "-77.6_-0.46667"),] # Remove atypical altitudinal records of de C. luteicollis
-  registros <- registros[!(registros$scientificName1=="Canthon pallidus" & registros$coordenadas =="-74.166667_2.666667"),]
-  registros <- registros[!(registros$scientificName1=="Canthon semiopacus" & registros$coordenadas =="-79.24529_-3.99067"),]
-  registros <- registros[!(registros$scientificName1=="Canthon septemmaculatus" & registros$decimalLatitude <= 5),] # Remove records than 5 Longitude for C. septemmaculatus
+  records <- merge(records, ctn_li, by = intersect(names(records), names(ctn_li)), all = TRUE) # add records for C lituratus
+  records <- records[!(records$scientificName1=="Canthon lituratus" & records$coordinates %in% c("-75078_10823","-74.84_9741", "-59.83333333_-2.416666667", "-74.083333_11.116667")),] # Remove atypical altitudinal records of C. lituratus
+  records <- records[!(records$scientificName1=="Canthon luteicollis" & records$stateProvince %in% c("Arauca", "Casanare", "Vichada")),] # Remove records of C. luteicollis from Orinoquia
+  records <- records[!(records$scientificName1=="Canthon luteicollis" & records$coordinates == "-77.6_-0.46667"),] # Remove atypical altitudinal records of de C. luteicollis
+  records <- records[!(records$scientificName1=="Canthon pallidus" & records$coordinates =="-74.166667_2.666667"),]
+  records <- records[!(records$scientificName1=="Canthon semiopacus" & records$coordinates =="-79.24529_-3.99067"),]
+  records <- records[!(records$scientificName1 == "Canthon septemmaculatus" & records$decimalLatitude <= 5),]  # Remove records with latitude <= 5 for C. septemmaculatus
+  records <- records[!(records$scientificName1 == "Canthon septemmaculatus" & records$coordinates %in% c("1.59858_49.06679")),]  # Remove outliers coordinates for C. septemmaculatus
+  records <- records[!(records$scientificName1 == "Canthon septemmaculatus" & records$decimalLongitude >= -70),]  # Remove atypical coordinates in longitude for C. septemmaculatus, maybe it is C. septemmaculatus linearis
     ctn_su <- data.frame(subset(SIB_COL, identificationRemarks == "Canthon subhyalinus")) # Select records of Canthon subhyalinus from "morphospecies unification with SIB "DB-Col-2022-07-23"
-    ctn_su <- ctn_su[!duplicated(ctn_su$coordenadas), ]
-  registros <- merge(registros, ctn_su, by = intersect(names(registros), names(ctn_su)), all = TRUE) # add records for Canthon subhyalinus
-  registros <- registros[registros$coordenadas != "-74831_4936", ] # Remove atypical records of C. subhyalinus
-  registros <- registros[!(registros$scientificName1=="Canthon subhyalinus" & registros$coordenadas =="-75.07859583_6.913268902"),] # Remove atypical altitudinal records of C. subhyalinus
-  registros <- registros[!(registros$scientificName1=="Canthon subhyalinus" & registros$decimalLatitude <= 1.7),] # Remove records less than 1.7 Longitude of C. subhyalinus
-  registros <- merge(registros, cps_corythus, by = intersect(names(registros), names(cps_corythus)), all = TRUE) # add records of Coporphanaeus corythus (with synonims and changes in taxonomy)
-  registros <- registros[!(registros$scientificName1=="Coprophanaeus corythus" & registros$stateProvince %in% c("Meta", "Casanare", "Vichada")),] # remove records of C. corythus from Orinoquia
-  registros <- registros[!(registros$scientificName1=="Coprophanaeus corythus" & registros$decimalLatitude >= 23),] # delete records less than 23 Latitude of C. corythus
-  registros <- registros[!(registros$scientificName1 == "Coprophanaeus jasius" & registros$stateProvince %in% c("Arauca", "Antioquia", "Canindeyu", "Sucre", "Atlántico")), ] # remove records of C. jasius from Atlantico department
-  registros <- registros %>% mutate(scientificName1 = ifelse(scientificName1 == "Coprophanaeus ohausi" & !is.na(stateProvince) & stateProvince == "Antioquia", "Coprophanaeus morenoi", scientificName1)) # Change ID speices from C. ohausi (Mistake ID) to C. morenoi
-  registros <- registros[!(registros$scientificName1=="Coprophanaeus morenoi" & registros$coordenadas == "-78.42578_-1.39315"),] # Remove atypical altitudinal records of C. morenoi
-  registros <- registros[!(registros$scientificName1 == "Coprophanaeus telamon" &! is.na(registros$stateProvince) & registros$stateProvince %in% c("Antioquia","Caldas", "Cesar", "Córdoba", "Cundinamarca","La Guajira", "Santander", "Sucre", "Valle del Cauca")), ] # remove some departments from the distribution of C. telamon
-  registros <- registros[!(registros$scientificName1 == "Coprophanaeus telamon" &! is.na(registros$county) & registros$county == "Puerto Boyacá"), ] # Remove C. telamon from Magdalena Valley (It really is C. corythys)
-  registros <- registros[!(registros$scientificName1 == "Deltochilum carinatum" &! is.na(registros$country) & registros$country == "Costa Rica"), ] # Remove D. carinatum from Costa Rica
-  registros <- registros[!(registros$scientificName1 == "Deltochilum carinatum" & registros$coordenadas %in% c("-76.1_1.333333", "-76.544889_1.243611")), ] # Remove D. carinatum from Andes
-  registros <- merge(registros, d_guildingii, by = intersect(names(registros), names(d_guildingii)), all = TRUE) # add records for D. guildingii
-  registros <- registros[!(registros$scientificName1=="Deltochilum guildingii" & registros$stateProvince <= "CaquetÃ¡"),] # remove D. guildingii from Caquetá
-  registros <- registros[!(registros$scientificName1=="Deltochilum guildingii" & registros$coordenadas=="-74.083333_11.116667"), ] # remove atypical altitudinal records of D. guildingii
-  registros <- registros[!(registros$scientificName1=="Deltochilum hypponum" & registros$coordenadas %in% c("-75.428647_0.838333", "-75.246667_2.935278", "-76.633333_1.133333", "-73.388056_4.5925", "-73.408611_5.75")), ] # remove atypical altitudinal records of D. hypponum
-    del_mex <- data.frame(subset(SIB_COL, identificationRemarks == "Deltochilum mexicanum")) # Select records of Deltochilum mexicanum from "morphospecies unification with SIB "DB-Col-2022-07-23"
-    del_mex <- del_mex[!duplicated(del_mex$coordenadas), ]
-  registros <- merge(registros, del_mex, by = intersect(names(registros), names(del_mex)), all = TRUE) # add records for D. mexicanum
-  registros <- registros[!(registros$scientificName1=="Deltochilum mexicanum" & registros$coordenadas %in% c("-71.8375_6.513333333", "-73.38805556_4.5925", "-78.25_1.283333333", "-74.72043_2.71329")), ] # remove atypical altitudinal records of D. burmeisteri
-  registros <- registros[!(registros$scientificName1=="Deltochilum mexicanum" & !is.na(registros$country) & registros$country %in% c("Guatemala","Mexico")), ] # Remove D. burmeisteri from Guatemala and Mexico 
-  registros <- registros[!(registros$scientificName1=="Deltochilum molanoi" & registros$coordenadas == "-76.633333_2.283333"),] # remove points greater than 76 Longitude D, molanoi
-  registros <- registros[!(registros$scientificName1=="Deltochilum orbiculare" & registros$decimalLongitude <= -76.4),] # remove points greater than 76 Longitude D. orbiculare
-  registros <- merge(registros, di_agenor, by = intersect(names(registros), names(di_agenor)), all = TRUE) # add records of D. agenor
-  registros <- registros[!(registros$scientificName1=="Dichotomius agenor" & registros$decimalLongitude <= -81),] # remove points greater than  81 Long D agenor
-  registros <- registros[!(registros$scientificName1=="Dichotomius agenor" &! is.na(registros$stateProvince) & registros$stateProvince %in% c("Meta","Casanare", "Vichada", "BoyacÃ¡")), ] # Remove D. agenor departments based on Montoya et al. 2021
-  registros <- registros[!(registros$scientificName1=="Dichotomius agenor" & registros$coordenadas %in% c("-74.84_9741", "-74907_9027", "-74831_4936", "NA_NA", "-74907_9027","-75078_10823", "-74831_4936", "-74.06785_11.0973")), ] # remove atypical records of D. agenor
-    di_bel <- data.frame(subset(SIB_COL, identificationRemarks == "Dichotomius belus")) # Select records of Dichotomius belus from "morphospecies unification with SIB "DB-Col-2022-07-23"
-    di_bel <- di_bel[!duplicated(di_bel$coordenadas), ]
-  registros <- merge(registros, di_bel, by = intersect(names(registros), names(di_bel)), all = TRUE) # add records for D. belus
-  registros <- registros[!(registros$scientificName1=="Dichotomius belus" & registros$decimalLatitude == 4936),] # remove atypical records of D. belus
-  registros <- registros[!(registros$scientificName1=="Dichotomius belus" & registros$coordenadas %in% c("-74.53146_6.27808", "-74.73175_5.73692", "-74.554144_6.460248", "-74.572882_6.494321")), ] # remove atypical records of  D. belus
-  registros <- registros[!(registros$scientificName1=="Dichotomius belus" & registros$decimalLongitude >= -72),] # remove points greater than -72 Long D. belus
-  registros <- registros[!(registros$scientificName1 == "Dichotomius belus" &! is.na(registros$stateProvince) & registros$stateProvince %in% c("Cesar", "Atlántico", "Magdalena","La Guajira")), ] # Remove D. belus departments
+  records <- merge(records, ctn_su, by = intersect(names(records), names(ctn_su)), all = TRUE) # add records for Canthon subhyalinus
+  records <- records[records$coordinates != "-74831_4936", ] # Remove atypical records of C. subhyalinus
+  records <- records[!(records$scientificName1=="Canthon subhyalinus" & records$coordinates =="-75.07859583_6.913268902"),] # Remove atypical altitudinal records of C. subhyalinus
+  records <- records[!(records$scientificName1=="Canthon subhyalinus" & records$decimalLatitude <= 1.7),] # Remove records less than 1.7 Longitude of C. subhyalinus
+  records <- records[!(records$scientificName1=="Coprophanaeus corythus" & records$stateProvince %in% c("Meta", "Casanare", "Vichada")),] # remove records of C. corythus from Orinoquia
+  records <- records[!(records$scientificName1=="Coprophanaeus corythus" & records$decimalLatitude >= 23),] # delete records less than 23 Latitude of C. corythus
+  records <- records[!(records$scientificName1 == "Coprophanaeus jasius" & records$stateProvince %in% c("Arauca", "Antioquia", "Canindeyu", "Sucre", "Atlántico")), ] # remove records of C. jasius from Atlantico department
+  records <- records[!(records$scientificName1=="Coprophanaeus morenoi" & records$coordinates == "-78.42578_-1.39315"),] # Remove atypical altitudinal records of C. morenoi
+  records <- records[!(records$scientificName1 == "Coprophanaeus telamon" & records$stateProvince %in% c("Antioquia","Caldas", "Cesar", "Córdoba", "Cundinamarca","La Guajira", "Santander", "Sucre", "Valle del Cauca")), ] # remove some departments from the distribution of C. telamon
+  records <- records[!(records$scientificName1 == "Coprophanaeus telamon" & records$county == "Puerto Boyacá"), ] # Remove C. telamon from Magdalena Valley (It really is C. corythys)
+  records <- records[!(records$scientificName1 == "Coprophanaeus telamon" & records$decimalLongitude <= -80), ] # Remove C. telamon from Central America (It really is C. corythys)
+  records <- records[!(records$scientificName1 == "Deltochilum carinatum" & records$country == "Costa Rica"), ] # Remove D. carinatum from Costa Rica
+  records <- records[!(records$scientificName1 == "Deltochilum carinatum" & records$coordinates %in% c("-76.1_1.333333", "-76.544889_1.243611")), ] # Remove D. carinatum from Andes
+  records <- records[!(records$scientificName1=="Deltochilum guildingii" & records$stateProvince == "Caquetá"),] # remove D. guildingii from Caquetá
+  records <- records[!(records$scientificName1=="Deltochilum guildingii" & records$coordinates=="-74.083333_11.116667"), ] # remove atypical altitudinal records of D. guildingii
+  records <- records[!(records$scientificName1=="Deltochilum hypponum" & records$coordinates %in% c("-75.428647_0.838333", "-75.246667_2.935278", "-76.633333_1.133333", "-73.388056_4.5925", "-73.408611_5.75")), ] # remove atypical altitudinal records of D. hypponum
+  records <- records[!(records$scientificName1=="Deltochilum mexicanum" & records$coordinates %in% c("-71.8375_6.513333333", "-73.38805556_4.5925", "-78.25_1.283333333", "-74.72043_2.71329")), ] # remove atypical altitudinal records of D. burmeisteri
+  records <- records[!(records$scientificName1=="Deltochilum mexicanum" & records$coordinates %in% c("Guatemala","Mexico")), ] # Remove D. burmeisteri from Guatemala and Mexico 
+  records <- records[!(records$scientificName1=="Deltochilum molanoi" & records$coordinates %in% c("-76.633333_2.283333", "-75.627222_5.661111")),] # remove points greater than 76 Longitude D, molanoi
+  records <- records[!(records$scientificName1=="Deltochilum orbiculare" & records$decimalLongitude <= -76.4),] # remove records greater than 76 Longitude D. orbiculare
+  records <- records[!(records$scientificName1=="Dichotomius agenor" & records$decimalLongitude <= -81),] # remove records greater than  81 Long D agenor
+  records <- records[!(records$scientificName1=="Dichotomius agenor" & records$stateProvince %in% c("Boyacá",  "Meta","Casanare", "Vichada", "BoyacÃ¡")), ] # Remove D. agenor departments based on Montoya et al. 2021
+  records <- records[!(records$scientificName1=="Dichotomius agenor" & records$coordinates %in% c("-74.84_9741", "-74907_9027", "-74831_4936", "NA_NA", "-74907_9027","-75078_10823", "-74831_4936", "-74.06785_11.0973")), ] # remove atypical records of D. agenor
+  records <- records[!(records$scientificName1=="Dichotomius belus" & records$coordinates %in% c("-49.866665_5.091945", "-71.14925_6.563528")), ] # Remove outlier records outside the country and Arauca for Dichotomius belus
+  records <- records[!(records$scientificName1=="Dichotomius belus" & records$coordinates %in% c("-74.53146_6.27808", "-74.73175_5.73692", "-74.554144_6.460248", "-74.572882_6.494321")), ] # remove atypical records of  D. belus
+  records <- records[!(records$scientificName1 == "Dichotomius belus" & records$stateProvince %in% c("Cesar", "Atlántico", "Magdalena")), ] # Remove D. belus departments
     di_gan <- data.frame(subset(SIB_COL, identificationRemarks == "Dichotomius sp. 10H")) # Select records of Dichotomius gandinii from "morphospecies unification with SIB "DB-Col-2022-07-23"
     di_gan <- mutate(di_gan, scientificName1 = ifelse(scientificName1 == "Dichotomius sp. 10H", "Dichotomius gandinii", scientificName1)) # replace names
-    di_gan <- di_gan[!duplicated(di_gan$coordenadas), ]
-  registros <- merge(registros, di_gan, by = intersect(names(registros), names(di_gan)), all = TRUE) # add records of D. gandinii
+  records <- merge(records, di_gan, by = intersect(names(records), names(di_gan)), all = TRUE) # add records of D. gandinii
     di_glo <- data.frame(subset(SIB_COL, identificationRemarks == "Dichotomius globulus")) # Select records of Dichotomius globulus from "morphospecies unification with SIB "DB-Col-2022-07-23"
-    di_glo <- di_glo[!duplicated(di_glo$coordenadas), ]
-  registros <- merge(registros, di_glo, by = intersect(names(registros), names(di_glo)), all = TRUE) # add records of D. globulus
+  records <- merge(records, di_glo, by = intersect(names(records), names(di_glo)), all = TRUE) # add records of D. globulus
     di_mam <- data.frame(subset(SIB_COL, identificationRemarks == "Dichotomius mamillatus")) # Select records of Dichotomius mamillatus from "morphospecies unification with SIB "DB-Col-2022-07-23"
-    di_mam <- di_mam[!duplicated(di_mam$coordenadas), ]
-  registros <- merge(registros, di_mam, by = intersect(names(registros), names(di_mam)), all = TRUE) # add records of D mamillatus
-  registros <- registros[!(registros$scientificName1=="Dichotomius nisus" & registros$country == "Brazil"),] # Remove D nisus from Basil, because we don't like include Amazonia. D nisus inhabit open areas such as Orinoquia, el Cerrado, Catinga ...
-    di_pro <- data.frame(subset(SIB_COL, identificationRemarks == "Dichotomius protectus")) #Select records of Dichotomius protcetus from "morphospecies unification with SIB "DB-Col-2022-07-23"
-    di_pro <- di_pro[!duplicated(di_pro$coordenadas), ]
-  registros <- merge(registros, di_pro, by = intersect(names(registros), names(di_pro)), all = TRUE) # add records of D protectus
-  registros <- registros[!(registros$scientificName1 =="Dichotomius quadrilobatus" & registros$coordenadas =="-77_1.15"),]
-  registros <- registros[!(registros$scientificName1 == "Dichotomius quinquelobatus" &! is.na(registros$stateProvince) & registros$stateProvince %in% c("Cauca", "Valle del Cauca", "Quindío","Risaralda", "Caldas")), ] # remove D. quinquelobatus departments
-  registros <- registros[!(registros$scientificName1=="Dichotomius quinquelobatus" & registros$coordenadas %in% c("-78.433692_-0.367544", "-79.24529_-3.99067", "-77.21667_0.05")),] # remove atypical points of D. quinquelobatus
-    di_val <- data.frame(subset(SIB_COL, identificationRemarks == "Dichotomius validipilosus")) # Select records of Dichotomius validipilosus from "morphospecies unification with SIB "DB-Col-2022-07-23"
-  registros <- merge(registros, di_val, by = intersect(names(registros), names(di_val)), all = TRUE) # add records of D validipilosus
-  registros <- registros[!(registros$scientificName1=="Dichotomius validipilosus" & registros$decimalLongitude >= -60),] # Remove records less than -60 Long D. validipilosus
-  registros <- merge(registros, d_gazella, by = intersect(names(registros), names(d_gazella)), all = TRUE) # add records of D gazella GBIF
-  registros <- registros[!(registros$scientificName1=="Digitonthophagus gazella" & registros$country != "Colombia"), ] # records from Colombia
-  registros <- registros[!(registros$scientificName1=="Digitonthophagus gazella" & registros$coordenadas %in% c("-72.536611_11.145056", "-76.068569_3.105836")),] # remove atypical records of D. gazella
-    eu_car <- data.frame(subset(eury_camero, scientificName == "Eurysternus caribaeus")) # select records of E. caribaeus Camero & Lobo 2012
-    eu_car <- eu_car[!duplicated(eu_car$coordenadas), ]
-  registros <- merge(registros, eu_car, by = intersect(names(registros), names(eu_car)), all = TRUE) # add records E. caribaeus Camero & Lobo 2012
-  registros <- registros[!(registros$scientificName1=="Eurysternus caribaeus" & registros$coordenadas %in% c("-52.95_5.36666666666667", "-75.7166666666667_4.11666666666667", "-72.0833333333333_7.95566666666667")),] # remove atypical altitudinal records of E. caribaeus
-    eu_cay <- data.frame(subset(eury_camero, scientificName == "Eurysternus cayennensis")) # select records of E. cayennensis Camero & Lobo 2012
-    eu_cay <- eu_cay[!duplicated(eu_cay$coordenadas), ]
-  registros <- merge(registros, eu_cay, by = intersect(names(registros), names(eu_cay)), all = TRUE) #  add records of E. cayennesis
-  registros <- registros[!(registros$scientificName1=="Eurysternus cayennensis" & registros$coordenadas %in% c("-78.5666666666667_-0.0588333333333333", "-60.9166666666667_5.0505", "-52.95_5.36666666666667")), ] # remove atypical altitudinal records of E. cayennensis
-  registros <- registros[!(registros$scientificName1=="Eurysternus cayennensis" &! is.na(registros$stateProvince) & registros$stateProvince %in% c("BOLÍVAR","CHOCÓ")), ] #  Remove E. cayennesis from departments of Caribe
-  registros <- registros[!(registros$scientificName1=="Eurysternus cayennensis" & registros$decimalLatitude <= -20),] # Remove records less tan -20 Lat E. cayennensis
-  registros <- registros[!(registros$scientificName1=="Eurysternus contractus" & registros$coordenadas %in% c("-77.3333_6.00667", "-70.533333_0.233333", "-78.936729_-1.07175", "-79.005517_-2.900755", "-75.666553_1.508061", "-77.216667_0.05")), ] # remove atypical records of E. contractus
-    eu_foe <- data.frame(subset(eury_camero, scientificName == "Eurysternus foedus")) # select records of E. foedus Camero & Lobo 2012
-    eu_foe <- eu_foe[!duplicated(eu_foe$coordenadas),]
-  registros <- merge(registros, eu_foe, by = intersect(names(registros), names(eu_foe)), all = TRUE) # add records of E. foedus
-  registros <- registros[!(registros$scientificName1=="Eurysternus foedus" & ! is.na(registros$locality) & registros$locality %in% c("Vacas", "Chugchilán", "Río Frío, Parque Nacional El Tamá")), ] # remove atypical altitudinal records of E. foedus
-  registros <- registros[!(registros$scientificName1=="Eurysternus foedus" & registros$decimalLatitude <= -20),] # remove records less than -20 Lat E. foedus
-  registros <- registros[!(registros$scientificName1=="Eurysternus foedus" & registros$coordenadas == "-67.3333333333333_-16.4666666666667"),] # remove atypical altitudinal records of E. foedus
-    eu_hyp <- data.frame(subset(eury_camero, scientificName == "Eurysternus hypocrita")) # select records of E. hypocrita Camero & Lobo 2012
-    eu_hyp <- eu_hyp[!duplicated(eu_hyp$coordenadas),]
-  registros <- merge(registros, eu_hyp, by = intersect(names(registros), names(eu_hyp)), all = TRUE) # add records of E. hypocrita
-  registros <- registros[!(registros$scientificName1=="Eurysternus hypocrita" & registros$coordenadas %in% c("-75.5666666666667_-10.55", "-61.4333333333333_5.98333333333333", "-52.95_5.36666666666667")), ] # remove atypical altitudinal records of E. hypocrita
-  registros <- registros[!(registros$scientificName1 == "Eurysternus hypocrita" &! is.na(registros$stateProvince) & registros$stateProvince %in% c("Antioquia","Santander")), ] # Remove E. hypocrita from Magdalena Valley
-  registros <- registros[!(registros$scientificName1=="Eurysternus hypocrita" & registros$decimalLatitude <= -20),] #remove records less than -20 Lat E. hypocrita
-    eu_mar <- data.frame(subset(eury_camero, scientificName == "Eurysternus marmoreus")) # select records of E. marmoreus Camero & Lobo 2012
-    eu_mar <- eu_mar[!duplicated(eu_mar$coordenadas),]
-  registros <- merge(registros, eu_mar, by = intersect(names(registros), names(eu_mar)), all = TRUE) # add records of E. marmoreus
-  registros <- registros[!(registros$scientificName1=="Eurysternus marmoreus" & registros$coordenadas %in% c("-75.4333333333333_4.75166666666667", "-73.0833333333333_5.91666666666667","-70.9833333333333_-13.4833333333333","-78.1166666666667_1.66666666666667", "-74.033333_11.333333")), ] # remove atypical altitudinal points of E. marmoreus
-    eu_mex <- data.frame(subset(eury_camero, scientificName1 == "Eurysternus mexicanus")) # select records of E. mexicanus Camero & Lobo 2012
-    eu_mex <- eu_mex[!duplicated(eu_mex$coordenadas),]
-  registros <- merge(registros, eu_mex, by = intersect(names(registros), names(eu_mex)), all = TRUE) # add records of E. mexicanus
-  registros <- registros[!(registros$scientificName1=="Eurysternus mexicanus" & registros$coordenadas %in% c("-74.1166666666667_4.46666666666667", "-71.9833333333333_7.95166666666667")), ]# remove atypical altitudinal records of E. mexicanus
-    eu_ple <- data.frame(subset(eury_camero, scientificName == "Eurysternus plebejus")) # select records of E. plebejus Camero & Lobo 2012
-    eu_ple <- eu_ple[!duplicated(eu_ple$coordenadas),]
-  registros <- merge(registros, eu_ple, by = intersect(names(registros), names(eu_ple)), all = TRUE) # add records of E. plebejus
-  registros <- registros[!(registros$scientificName1=="Eurysternus plebejus" & registros$coordenadas %in% c("-75.5166666666667_6.78333333333333", "-79.195752_-4.004985", "-79.199326_-3.986796", "-65.5833333333333_-17.5166666666667")), ] # remove atypical altitudinal records of E. plebejus
-    eu_sqa <- data.frame(subset(eury_camero, scientificName == "Eurysternus squamosus")) # select records of E. squamosus Camero & Lobo 2012
-  registros <- merge(registros, eu_sqa, by = intersect(names(registros), names(eu_sqa)), all = TRUE) # add records of E. squamosus
-  registros <- registros[!(registros$scientificName1=="Eurysternus squamosus" & registros$coordenadas %in% c("-77.6166666666667_0.816666666666667", "-76.1_1.333333")),] #elimina puntos altitudinales atipicos de E. squamosus
-    eu_wit <- data.frame(subset(eury_camero, scientificName == "Eurysternus wittmerorum")) # select records of E. wittmerorum Camero & Lobo 2012
-    eu_wit <- eu_wit[!duplicated(eu_wit$coordenadas),]
-  registros <- merge(registros, eu_wit, by = intersect(names(registros), names(eu_wit)), all = TRUE) # add records of E. wittmerorum
-  registros <- registros[!(registros$scientificName1=="Eurysternus wittmerorum" & registros$coordenadas %in% c("-75.55_4.716667","-79.199326_-3.986796")),]
-  registros <- registros[!(registros$scientificName1=="Eurysternus wittmerorum" & registros$decimalLatitude >= 4.8),] # Remove E. wittmerorum from Boyaca
-  registros <- registros[!(registros$scientificName1 == "Gromphas aeruginosa" & registros$coordenadas %in% c("-71.46_7.57", "-6.333333_-12.833333")), ] # remove atypical records of G. aeruginosa follow Cupello et al. 2013
-  registros <- registros[!(registros$scientificName1=="Gromphas lemoinei" & registros$coordenadas == "-74.081944_4.61"),] # Remove records of G aeruginosa from catinga ...
-    on_bre <- data.frame(subset(SIB_COL, identificationRemarks == "Ontherus brevicollis")) # Select records of Ontherus brevicollis from "morphospecies unification with SIB "DB-Col-2022-07-23"
-    on_bre <- on_bre[!duplicated(on_bre$coordenadas), ]
-  registros <- merge(registros, on_bre, by = intersect(names(registros), names(on_bre)), all = TRUE) # add records of O. brevicollis
-  registros <- registros[!(registros$scientificName1=="Ontherus brevicollis" & registros$coordenadas %in% c("-75.246667_2.935278", "-73.38805556_4.5925", "-73.3808_6.93708", "-73.38349_4.56448")), ] #Eliminar puntos de altura atipicos O. brevicollis
-  registros <- registros[!(registros$scientificName1=="Ontherus diabolicus" & registros$coordenadas == "-72.683333_5.433333"),] # remove atypical altitudinal records of O. diabolicus
+  records <- merge(records, di_mam, by = intersect(names(records), names(di_mam)), all = TRUE) # add records of D mamillatus
+  records <- records[!(records$scientificName1=="Dichotomius nisus" & records$decimalLatitude <= 0),] # Remove D nisus from Brazil, because we don't like include Amazonia. D nisus inhabit open areas such as Orinoquia, el Cerrado, Catinga ...
+  records <- records[!(records$scientificName1=="Dichotomius nisus" & records$coordinates %in% c("-73.885261_11.12191", "-74.85237_5.01152", "-76.79082_1.07046")),] # remove outliers records of D. nisus from Caribe, Magdalena and Putumayo.
+  records <- records[!(records$scientificName1 =="Dichotomius quadrilobatus" & records$coordinates =="-77_1.15"),]
+  records <- records[!(records$scientificName1 == "Dichotomius quinquelobatus" & records$stateProvince %in% c("Cauca", "Valle del Cauca", "Quindío","Risaralda", "Caldas")), ] # remove D. quinquelobatus departments
+  records <- records[!(records$scientificName1=="Dichotomius quinquelobatus" & records$coordinates %in% c("-78.433692_-0.367544", "-79.24529_-3.99067", "-77.21667_0.05")),] # remove atypical points of D. quinquelobatus
+    di_val <- data.frame(subset(SIB_COL, identificationRemarks == "Dichotomius validipilosus")) # Select records of Dichotomius validipilosus from "morphospecies unification with SIB "DB-Col-2022-07-23" and our data
+  records <- merge(records, di_val, by = intersect(names(records), names(di_val)), all = TRUE) # add records of D validipilosus
+  records <- records[!(records$scientificName1=="Dichotomius validipilosus" & records$decimalLongitude >= -60),] # Remove records less than -60 Long D. validipilosus
+  records <- records[!(records$scientificName1=="Digitonthophagus gazella" & records$country != "Colombia"), ] # records from Colombia
+  records <- records[!(records$scientificName1=="Digitonthophagus gazella" & records$coordinates %in% c("-72.536611_11.145056", "-76.068569_3.105836")),] # remove atypical records of D. gazella
+  records <- records[!(records$scientificName1=="Eurysternus caribaeus" & records$coordinates %in% c("-52.95_5.36667", "-75.7166666666667_4.11666666666667", "-72.084167_7.959444")),] # remove atypical altitudinal records of E. caribaeus
+  records <- records[!(records$scientificName1=="Eurysternus cayennensis" & records$coordinates %in% c("-88.7_17.133333", "-52.95_5.36667", "-76.6833_3.00333")), ] # remove atypical altitudinal records of E. cayennensis
+  records <- records[!(records$scientificName1=="Eurysternus contractus" & records$coordinates %in% c("-77.3333_6.00667", "-70.533333_0.233333", "-78.936729_-1.07175", "-79.005517_-2.900755", "-75.666553_1.508061", "-77.216667_0.05")), ] # remove atypical records of E. contractus
+  records <- records[!(records$scientificName1=="Eurysternus foedus" & records$decimalLatitude <= -20),] # remove records less than -20 Lat E. foedus
+  records <- records[!(records$scientificName1=="Eurysternus hypocrita" & records$coordinates %in% c("-52.95_5.36667", "-76.6833_3.00333", "-80.7531_-1.75806")), ] # remove atypical altitudinal records of E. hypocrita
+  records <- records[!(records$scientificName1 == "Eurysternus hypocrita" & records$stateProvince %in% c("Antioquia","Santander")), ] # Remove E. hypocrita from Magdalena Valley
+  records <- records[!(records$scientificName1=="Eurysternus marmoreus" & records$coordinates == "-74.033333_11.333333"), ] # remove atypical altitudinal points of E. marmoreus
+  records <- records[!(records$scientificName1=="Eurysternus plebejus" & records$coordinates %in% c("19.083333_-32.079167","19.253889_-31.812778","-79.195752_-4.004985", "-79.199326_-3.986796")), ] # remove atypical altitudinal records of E. plebejus
+  records <- records[!(records$scientificName1=="Eurysternus squamosus" & records$coordinates == "-76.1_1.333333"),] # remove outliers altitudinal records of E. squamosus
+  records <- records[!(records$scientificName1=="Eurysternus wittmerorum" & records$coordinates %in% c("-79.199326_-3.986796", "-76.6833_3.00333")),]
+  records <- records[!(records$scientificName1=="Eurysternus wittmerorum" & records$decimalLatitude >= 5),] # Remove E. wittmerorum from Boyaca
+    G_aeru <- data.frame(subset(SIB_COL, identificationRemarks == "Gromphas aeruginosa")) # import records by literature for G. aeruginosa Cupello & Vaz de Mello 2013
+  records <- merge(records, G_aeru, by = intersect(names(records), names(G_aeru)), all = TRUE) # add records of D validipilosus
+  records <- records[!(records$scientificName1 == "Gromphas aeruginosa" & records$decimalLongitude >= -40),] # Remove G. aeruginosa outliers
+  records <- records[!(records$scientificName1 == "Gromphas aeruginosa" & records$decimalLatitude >= 4),] # Remove G. aeruginosa outliers
+  records <- records[!(records$scientificName1=="Gromphas lemoinei" & records$coordinates == "-74.081944_4.61"),] # Remove records of G lemoinei from Bogota DC ...
+    H_ach <- data.frame(subset(SIB_COL, identificationRemarks == "Homocopris achamas")) # Select records from Nariño by "morphospecies unification with SIB "DB-Col-2022-07-23"
+  records <- merge(records, H_ach, by = intersect(names(records), names(H_ach)), all =T) # add records of H. achamas
+  records <- records[!(records$scientificName1=="Homocopris achamas" & duplicated(records$coordinates)), ] # remove duplicated records
+  records <- records[!(records$scientificName1=="Homocopris achamas" & records$stateProvince %in% c("Quindío", "Risaralda")), ] # remove duplicated records
+    o_brev <- data.frame(subset(SIB_COL, identificationRemarks == "Ontherus brevicollis")) # Select records of Ontherus brevicollis from "morphospecies unification with SIB "DB-Col-2022-07-23"
+  records <- merge(records, o_brev, by = intersect(names(records), names(o_brev)), all = TRUE) # add records of O. brevicollis from Nariño by "morphospecies unification with SIB "DB-Col-2022-07-23"
+  records <- records[!(records$scientificName1=="Ontherus brevicollis" & duplicated(records$coordinates)), ] # remove duplicated records
+  records <- records[!(records$scientificName1=="Ontherus brevicollis" & records$coordinates == "-73.38805556_4.5925"), ] # remove outliers altitudinal records for O. brevicollis
+  records <- records[!(records$scientificName1=="Ontherus diabolicus" & records$coordinates == "-72.683333_5.433333"),] # remove atypical altitudinal records of O. diabolicus
     on_inc <- data.frame(subset(SIB_COL, identificationRemarks == "Ontherus incisus")) # Select records of Ontherus incisus from "morphospecies unification with SIB "DB-Col-2022-07-23"
-    on_inc <- on_inc[!duplicated(on_inc$coordenadas), ]
-  registros <- merge(registros, on_inc, by = intersect(names(registros), names(on_inc)), all = TRUE) # add records of O. incisus
-  registros <- registros[!(registros$scientificName1=="Ontherus incisus" & registros$stateProvince == "Santander"),] # remove O. incicus from Santander
-  registros <- registros[!(registros$scientificName1=="Ontherus kirschii" & registros$coordenadas %in% c("-72.840833_7.438889", 	"-73.388056_4.5925")),] # remove atypical altitudinal records of O. kirschii
-    on_lun <- data.frame(subset(SIB_COL, identificationRemarks == "Ontherus lunicollis")) # Select records of Ontherus lunicollis from "morphospecies unification with SIB "DB-Col-2022-07-23"
-    on_lun <- on_lun[!duplicated(on_lun$coordenadas), ]
-  registros <- merge(registros, on_lun, by = intersect(names(registros), names(on_lun)), all = TRUE) #a add records of O. lunicollis
-  registros <- registros[!(registros$scientificName1=="Ontherus lunicollis" & registros$coordenadas %in% c("-75.246667_2.935278", "-72.61869444_6.66511111", "-75.495361_4.469028")), ] # remove atypical altitudinal records of O. lunicollis
-  registros <- registros[!(registros$scientificName1=="Ontherus pubens" & registros$coordenadas == "-78.42578_-1.39315"),] # remove atypical altitudinal records of O. pubens
-  registros <- merge(registros, o_acuminatus, by = intersect(names(registros), names(o_acuminatus)), all = TRUE) # add records of O. acuminatus
-  registros <- registros[!(registros$scientificName1=="Onthophagus acuminatus" & registros$decimalLongitude >= -72.7),] # remove records less than -73 Lat O acuminatus
-  registros <- registros[!(registros$scientificName1=="Onthophagus acuminatus" & registros$coordenadas %in% c("-73.1_9.85", "-73.458333_5.746667", "-76.068569_3.105836")),] #Eliminar puntos de altura atipicos en O. acuminatus
-    o_bidentatus <- data.frame(subset(SIB_COL, identificationRemarks == "Onthophagus bidentatus")) # Select records of Onthophagus bidentatus from "morphospecies unification with SIB "DB-Col-2022-07-23"
-    o_bidentatus <- o_bidentatus[!duplicated(o_bidentatus$coordenadas), ]
-  registros <- merge(registros, o_bidentatus, by = intersect(names(registros), names(o_bidentatus)), all = TRUE) # add records of O. bidentatus
-  registros <- registros[!(registros$scientificName1 == "Onthophagus bidentatus" & registros$coordenadas %in% c("-74907_9027", "-74.84_9741", "-75078_10823")), ] # remove atypical altitudinal records of O. bidendatus
-  registros <- merge(registros, o_curvicornis, by = intersect(names(registros), names(o_curvicornis)), all = TRUE) # add records of O. curvicornis
-  registros <- registros[!(registros$scientificName1=="Onthophagus curvicornis" & registros$decimalLatitude >= 10),] # remove records greater than 10 Lat O curvicornis
-  registros <- registros[!(registros$scientificName1=="Onthophagus curvicornis" & registros$decimalLongitude >= -70),] # remove records gerater than 70 Long O curvicornis
-  registros <- registros[!(registros$scientificName1=="Onthophagus curvicornis" & registros$coordenadas %in% c("-72_4", "-71.86113_6.47894", "-72.309928_5.608447", "-72.987472_5.946583")),] # remove atypical altitudinal records of O. curvicornis
-    o_marg <- data.frame(subset(SIB_COL, identificationRemarks == "Onthophagus marginicollis")) #s Select records of Onthophagus marginicollis from "morphospecies unification with SIB "DB-Col-2022-07-23"
-    o_marg <- o_marg[!duplicated(o_marg$coordenadas), ]
-  registros <- merge(registros, o_marg, by = intersect(names(registros), names(o_marg)), all = TRUE) # add records of O. marginicollis
-  registros <- registros[!(registros$scientificName1 == "Onthophagus marginicollis" & registros$decimalLatitude %in% c("9027", "9741")), ] # remove atypical records of O. marginicollis
+  records <- merge(records, on_inc, by = intersect(names(records), names(on_inc)), all = TRUE) # add records of O. incisus from Nariño
+  records <- records[!(records$scientificName1=="Ontherus incisus" & duplicated(records$coordinates)), ] # remove duplicated records
+  records <- records[!(records$scientificName1=="Ontherus incisus" & records$stateProvince == "Santander"),] # remove O. incicus from Santander
+  records <- records[!(records$scientificName1=="Ontherus kirschii" & records$coordinates %in% c("-72.840833_7.438889", 	"-73.388056_4.5925")),] # remove atypical altitudinal records of O. kirschii
+    on_lun <- data.frame(subset(SIB_COL, identificationRemarks == "Ontherus lunicollis")) # Select records of Ontherus lunicollis from Nariño by "morphospecies unification with SIB "DB-Col-2022-07-23"
+  records <- merge(records, on_lun, by = intersect(names(records), names(on_lun)), all = TRUE) #a add records of O. lunicollis
+  records <- records[!(records$scientificName1=="Ontherus lunicollis" & duplicated(records$coordinates)), ] # remove duplicated records
+  records <- records[!(records$scientificName1=="Ontherus lunicollis" & records$coordinates %in% c("-75.246667_2.935278", "-72.61869444_6.66511111", "-75.495361_4.469028")), ] # remove atypical altitudinal records of O. lunicollis
+  records <- records[!(records$scientificName1=="Ontherus pubens" & records$coordinates == "-78.42578_-1.39315"),] # remove atypical altitudinal records of O. pubens
+  records <- records[!(records$scientificName1=="Onthophagus acuminatus" & records$decimalLongitude >= -72.7),] # remove records less than -73 Lat O acuminatus
+  records <- records[!(records$scientificName1=="Onthophagus acuminatus" & records$coordinates %in% c("-73.1_9.85", "-73.458333_5.746667", "-76.068569_3.105836", "NA_NA")),] # remove outliers altitudinal records of O. acuminatus
+    o_bide <- data.frame(subset(SIB_COL, identificationRemarks == "Onthophagus bidentatus")) # Select records of Onthophagus bidentatus from "morphospecies unification with SIB "DB-Col-2022-07-23"
+  records <- merge(records, o_bide, by = intersect(names(records), names(o_bide)), all = TRUE) # add records of O. bidentatus from IAvH collection, localities Nariño by SIB "DB-Col-2022-07-23"
+  records <- records[!(records$scientificName1=="Onthophagus bidentatus" & duplicated(records$coordinates)), ]
+  records <- records[!(records$scientificName1=="Onthophagus bidentatus" & records$coordinates %in% c("-74907_9027", "-74.84_9741", "-75078_10823", "NA_NA", "-14.5_14.5")), ] # remove atypical altitudinal records of O. bidendatus
+    o_curv <- data.frame(subset(SIB_COL, identificationRemarks == "Onthophagus curvicornis"))
+  records <- merge(records, o_curv, by = intersect(names(records), names(o_curv)), all = TRUE) # add records of O. curvicornis from Nariño by "morphospecies unification with SIB "DB-Col-2022-07-23"
+  records <- records[!(records$scientificName1 == "Onthophagus curvicornis" & duplicated(records$coordinates)),]
+  records <- records[!(records$scientificName1=="Onthophagus curvicornis" & records$decimalLatitude >= 10),] # remove records greater than 10 Lat O curvicornis
+  records <- records[!(records$scientificName1=="Onthophagus curvicornis" & records$decimalLongitude >= -70),] # remove records gerater than 70 Long O curvicornis
+  records <- records[!(records$scientificName1=="Onthophagus curvicornis" & records$coordinates %in% c("-72_4", "-71.86113_6.47894", "-72.309928_5.608447", "-72.987472_5.946583")),] # remove atypical altitudinal records of O. curvicornis
+  records <- records[!(records$scientificName1 == "Onthophagus marginicollis" & records$decimalLongitude >= -50), ] # remove atypical records of O. marginicollis
     o_tran <- data.frame(subset(SIB_COL, identificationRemarks == "Onthophagus transisthmius")) # Select records of Onthophagus transisthmius from "morphospecies unification with SIB "DB-Col-2022-07-23"
-    o_tran <- o_tran[!duplicated(o_tran$coordenadas), ]
-  registros <- merge(registros, o_tran, by = intersect(names(registros), names(o_tran)), all = TRUE) # Add records of O. transithmius
+  records <- merge(records, o_tran, by = intersect(names(records), names(o_tran)), all = TRUE) # Add records of O. transithmius
     ox_ebe <- data.frame(subset(SIB_COL, identificationRemarks == "Oxysternon ebeninum")) # Select records of Oxysternon ebeninum from "morphospecies unification with SIB "DB-Col-2022-07-23"
-    ox_ebe <- ox_ebe[!duplicated(ox_ebe$coordenadas), ]
-  registros <- merge(registros, ox_ebe, by = intersect(names(registros), names(ox_ebe)), all = TRUE) # add records of O. ebeninum
+  records <- merge(records, ox_ebe, by = intersect(names(records), names(ox_ebe)), all = TRUE) # add records of O. ebeninum, our data Putumayo
     ox_sil <- data.frame(subset(SIB_COL, identificationRemarks == "Oxysternon silenus")) # Select records of Oxysternon silenus from "morphospecies unification with SIB "DB-Col-2022-07-23"
-    ox_sil <- ox_sil[!duplicated(ox_sil$coordenadas), ]
-  registros <- merge(registros, ox_sil, by = intersect(names(registros), names(ox_sil)), all = TRUE) # add records of O. silenus
-  registros <- registros[!(registros$scientificName1=="Phanaeus bispinus" & registros$coordenadas=="-79.199939_-3.982992"),]
-  registros <- registros[!(registros$scientificName1 == "Phanaeus chalcomelas" & registros$coordenadas %in% c("-78.433692_-0.367544", "-79.24529_-3.99067")), ] # remove atypical altitudinal records P. chalcomelas
-  registros <- registros[!(registros$scientificName1=="Phanaeus haroldi" & registros$decimalLongitude >= -65),] # remove records less than -60 Long of P. haroldi
-  registros <- registros[!(registros$scientificName1=="Phanaeus haroldi" & registros$coordenadas %in% c("-72.691667_5.434722", "-72.691667_5.434722")),] # remove atypical altitudinal records of P. haroldi
-  registros <- registros[!(registros$scientificName1=="Phanaeus meleagris" & registros$coordenadas =="-79.199326_-3.986796"),]
-  registros <- registros[!(registros$scientificName1 == "Phanaeus pyrois" & registros$country != "Colombia"), ] #extraer solo información de P. pyrois para Colombia
-  registros <- registros[!(registros$scientificName1 == "Pseudocanthon perplexus"),] # remove records from "registros" of P. perplexus, and we work with unification with SIB "DB-Col-2022-07-23" 
+  records <- merge(records, ox_sil, by = intersect(names(records), names(ox_sil)), all = TRUE) # add records of O. silenus
+  records <- records[!(records$scientificName1=="Phanaeus bispinus" & records$coordinates=="-79.199939_-3.982992"),] # remove outlier records from Western Cordillera Ecuador
+  records <- records[!(records$scientificName1 == "Phanaeus chalcomelas" & records$coordinates %in% c("-78.433692_-0.367544", "-79.24529_-3.99067", "-80.74694_-1.78167")), ] # remove atypical altitudinal records P. chalcomelas
+  records <- records[!(records$scientificName1=="Phanaeus haroldi" & records$decimalLongitude >= -65),] # remove records less than -60 Long of P. haroldi
+  records <- records[!(records$scientificName1=="Phanaeus haroldi" & records$coordinates %in% c("-72.691667_5.434722", "-72.691667_5.434722")),] # remove atypical altitudinal records of P. haroldi
+  records <- records[!(records$scientificName1=="Phanaeus meleagris" & records$coordinates =="-79.199326_-3.986796"),]
+  records <- records[!(records$scientificName1 == "Phanaeus pyrois" & records$country != "Colombia"), ] #extraer solo información de P. pyrois para Colombia
+  records <- records[!(records$scientificName1 == "Pseudocanthon perplexus"),] # remove records from P. perplexus, and we work with unification with SIB "DB-Col-2022-07-23" 
     ps_per <- data.frame(subset(SIB_COL, identificationRemarks == "Pseudocanthon sp. 01H")) # Select records of Pseudocanthon perplexus (sp 01H) from "morphospecies unification with SIB "DB-Col-2022-07-23"
     ps_per <- mutate(ps_per, scientificName1 = ifelse(scientificName1 == "Pseudocanthon sp. 01H", "Pseudocanthon perplexus", scientificName1)) # replace names
-    ps_per <- ps_per[!duplicated(ps_per$coordenadas), ]
-  registros <- merge(registros, ps_per, by = intersect(names(registros), names(ps_per)), all = TRUE)# add records of P. perplexus
-  registros <- registros[!(registros$scientificName1== "Pseudocanthon perplexus" & registros$decimalLatitude== "9027"),] # remove atypical altitudinal records of Pseudocanthon perplexus
+  records <- merge(records, ps_per, by = intersect(names(records), names(ps_per)), all = TRUE)# add records of P. perplexus
+  records <- records[!(records$scientificName1== "Pseudocanthon perplexus" & records$decimalLatitude== "9027"),] # remove atypical altitudinal records of Pseudocanthon perplexus
+  records <- records[!(records$scientificName1 == "Pseudocanthon xanthurus"),] # remove records from P. xanthurus, and we work with unification with SIB "DB-Col-2022-07-23" 
     ps_xan <- data.frame(subset(SIB_COL, identificationRemarks == "Pseudocanthon sp. 02H")) # Select records of Pseudocanthon xanthurus (sp 02H) from "morphospecies unification with SIB "DB-Col-2022-07-23"
     ps_xan <- mutate(ps_xan, scientificName1 = ifelse(scientificName1 == "Pseudocanthon sp. 02H", "Pseudocanthon xanthurus", scientificName1)) # replace names
-    ps_xan <- ps_xan[!duplicated(ps_xan$coordenadas), ]
-  registros <- merge(registros, ps_xan, by = intersect(names(registros), names(ps_xan)), all = TRUE)# add records of P. xanthurus
-  registros <- registros[!(registros$scientificName1=="Scatimus ovatus" & registros$decimalLongitude >= -72.4),] # remove records less than -72.4 Long S. ovatus
-  registros <- registros[!(registros$scientificName1=="Scatimus ovatus" & registros$decimalLatitude <= 4.9),] # remove records less than 4.9 Lat S. ovatus
-  registros <- registros[!(registros$scientificName1=="Scybalocanthon kelleri" & registros$coordenadas=="-73.595_3.045556"), ]# remove atypical altitudinal records of S. kelleri
-  registros <- registros[!(registros$scientificName1=="Scybalocanthon darlingtoni" & registros$decimalLatitude >= 11),] # remove records greater than 11 Lat S. darlingtoni
+  records <- merge(records, ps_xan, by = intersect(names(records), names(ps_xan)), all = TRUE)# add records of P. xanthurus
+  records <- records[!(records$scientificName1=="Scatimus ovatus" & records$decimalLongitude >= -72.4),] # remove records less than -72.4 Long S. ovatus
+  records <- records[!(records$scientificName1=="Scatimus ovatus" & records$decimalLatitude <= 4.9),] # remove records less than 4.9 Lat S. ovatus
+  records <- records[!(records$scientificName1=="Scybalocanthon kelleri" & records$coordinates=="-73.595_3.045556"), ]# remove atypical altitudinal records of S. kelleri
     sc_dar <- data.frame(subset(SIB_COL, scientificName == "Scybalocanthon darlingtoni"))# Select records of Scybalocanton darlingtoni from "morphospecies unification with SIB "DB-Col-2022-07-23"
-  registros <- merge(registros, sc_dar, by = intersect(names(registros), names(sc_dar)), all = TRUE)# add records of S. sexspilotus
+  records <- merge(records, sc_dar, by = intersect(names(records), names(sc_dar)), all = TRUE)# add records of S. darlingtoni by Silva & Valois 2019
+  records <- records[!(records$scientificName1=="Scybalocanthon darlingtoni" & records$coordinates == "-74.166664_10.916667"),] # remove records greater than 11 Lat S. darlingtoni
     sc_mar <- data.frame(subset(SIB_COL, scientificName == "Scybalocanthon martinezi"))# Select records of S. martinezi from "morphospecies unification with SIB "DB-Col-2022-07-23"
-    sc_mar <- sc_mar[!duplicated(sc_mar$coordenadas), ]
-  registros <- merge(registros, sc_mar, by = intersect(names(registros), names(sc_mar)), all = TRUE)# add recrods of S. martinezi
+  records <- merge(records, sc_mar, by = intersect(names(records), names(sc_mar)), all = TRUE)# add recrods of S. martinezi by Silva & Valois 2019
     sc_sex <- data.frame(subset(SIB_COL, identificationRemarks == "Scybalocanthon sp. 01H")) #Select records of S. sexspilotus (sp 01H) from "morphospecies unification with SIB "DB-Col-2022-07-23"
     sc_sex <- mutate(sc_sex, scientificName1 = ifelse(scientificName1 == "Scybalocanthon sp. 01H", "Scybalocanthon sexspilotus", scientificName1)) # replace names
-    sc_sex <- sc_sex[!duplicated(sc_sex$coordenadas), ]
-  registros <- merge(registros, sc_sex, by = intersect(names(registros), names(sc_sex)), all = TRUE)# add records S. sexspilotus
-  registros <- registros[!(registros$scientificName1=="Sulcophanaeus auricolis" & registros$coordenadas == "-72.683333_5.43333"),] # remove atypical altitudinal records of S. auricollis
-  registros <- registros[!(registros$scientificName1=="Sulcophanaeus noctis" & registros$coordenadas =="-75.55_4.716667"),]
-  registros <- registros[!(registros$scientificName1=="Sulcophanaeus velutinus" & registros$coordenadas == "-78.10918_-1.212233"),] # remove atypical altitudinal records of S. velutinus
-  registros <- registros[registros$scientificName1 != "Sylvicanthon aequinoctialis", ]
-  registros <- merge(registros, s_aequinoctialis, by = intersect(names(registros), names(s_aequinoctialis)), all = TRUE) # add records ofS aequinoctialis
-  registros <- registros[!(registros$scientificName1 == "Sylvicanthon aequinoctialis" & registros$coordenadas %in% c("-74831_4936", "-74.84_9741", "-73.999611_10.895134")), ] # remove atypical records of S. aequinoctialis
-  registros <- registros[!(registros$scientificName1 == "Sylvicanthon aequinoctialis" &! is.na(registros$stateProvince) & registros$stateProvince %in% c("Amazonas", "CaquetÃ¡","Madre de Dios", "NariÃ±o","Putumayo", "Vichada")), ] # remove S. aequinoctialis from Amazonas
-  registros <- registros[!(registros$scientificName1=="Sylvicanthon aequinoctialis" & registros$decimalLongitude >= -72.9),] # remove records less than -72.9 Long S. aequinoctialis
+  records <- merge(records, sc_sex, by = intersect(names(records), names(sc_sex)), all = TRUE)# add records S. sexspilotus
+  records <- records[!(records$scientificName1=="Sulcophanaeus auricollis" & records$coordinates == "-72.683333_5.433333"),] # remove atypical altitudinal records of S. auricollis
+  records <- records[!(records$scientificName1=="Sulcophanaeus noctis" & records$coordinates %in% c("-75.55_4.716667", "-74.783333_10.95")),]
+  records <- records[!(records$scientificName1=="Sulcophanaeus velutinus" & records$coordinates == "-78.10918_-1.212233"),] # remove atypical altitudinal records of S. velutinus
+  records <- records[!(records$scientificName1 == "Sylvicanthon aequinoctialis" & records$coordinates == "-73.999611_10.895134"), ] # remove atypical records of S. aequinoctialis
+  records <- records[!(records$scientificName1 == "Sylvicanthon aequinoctialis" & records$stateProvince %in% c("Amazonas", "Caquetá","Madre de Dios", "Nariño","Putumayo", "Vichada")), ] # remove S. aequinoctialis from Amazonas
+  records <- records[!(records$scientificName1=="Sylvicanthon aequinoctialis" & records$decimalLongitude >= -72.9),] # remove records less than -72.9 Long S. aequinoctialis
+  records <- records[!(records$scientificName1=="Sylvicanthon aequinoctialis" & records$decimalLatitude <= 0),] # remove records less than 0 Lat S. aequinoctialis
     s_proseni <- data.frame(subset(SIB_COL, scientificName1 == "Sylvicanthon proseni")) # Select records of Sylvicanthon proseni (sp 02H) from "morphospecies unification with SIB "DB-Col-2022-07-23"
-    s_proseni <- s_proseni[!duplicated(s_proseni$coordenadas), ]
-  registros <- merge(registros, s_proseni, by = intersect(names(registros), names(s_proseni)), all = TRUE) # add records of S proseni
-  registros <- registros[!(registros$scientificName1=="Sylvicanthon proseni" & registros$coordenadas == "-76.1_1.616666667"),]
+  records <- merge(records, s_proseni, by = intersect(names(records), names(s_proseni)), all = TRUE) # add records of S proseni
+  records <- records[!(records$scientificName1=="Sylvicanthon proseni" & records$coordinates == "-76.1_1.616666667"),]
     U_caucanus <- data.frame(subset(SIB_COL, scientificName1 == "Uroxys caucanus")) # Select records of U. caucanus from "morphospecies unification with SIB "DB-Col-2022-07-23"
-    U_caucanus <- U_caucanus[!duplicated(U_caucanus$coordenadas), ]
-  registros <- merge(registros, U_caucanus, by = intersect(names(registros), names(U_caucanus)), all = TRUE) # add records of U caucanus
-  registros <- registros[!(registros$scientificName1 == "Uroxys caucanus" &! is.na(registros$stateProvince) & registros$stateProvince %in% c("Cundinamarca","Santander")), ] # remove U. caucanus from eastern cordillera
-  registros <- registros[!is.na(registros$scientificName1),]
+  records <- merge(records, U_caucanus, by = intersect(names(records), names(U_caucanus)), all = TRUE) # add records of U caucanus
+  records <- records[!(records$scientificName1 == "Uroxys caucanus" & records$stateProvince %in% c("Cundinamarca","Santander")), ] # remove U. caucanus from eastern cordillera
+  records <- records[!is.na(records$scientificName1),]
   
 #saveRDS(registros, file="registros.rds")
 #
