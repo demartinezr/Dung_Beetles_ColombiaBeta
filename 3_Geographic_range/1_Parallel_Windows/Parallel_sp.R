@@ -14,14 +14,11 @@
     library(doParallel)
 #
 # Base maps
-  ecoreg <- st_read(dsn = "D:/Capas/World/wwf/Ecoregions2017", layer = "eco_col") # País
-  ecoreg <- st_transform(ecoreg, CRS("+proj=longlat +datum=WGS84")) # WGS84
-  ecoreg <- as(ecoreg, "Spatial")
-  dem_ALOS <- "D:/Capas/coldem30/alos_dem_col.tif"
+  dem_ALOS <- "./SIG/coldem30/alos_dem_col.tif"
   dem <- raster(dem_ALOS)
 #
 # GBIF data
-  registros <- readRDS("./elevation_range/registros_ele.rds")
+  registros <- readRDS("./elevation_range/records_ele.rds")
 # registros <- readRDS("./elevation_range/varios_ele.rds") # species with Gromphas aeruginosa, Ontherus sulcator, Uroxys pygmaeus
 #
   # Species subset 

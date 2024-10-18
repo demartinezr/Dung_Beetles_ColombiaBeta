@@ -7,20 +7,18 @@ library(raster)
 library(dplyr)
 library(ggplot2)
 library(rgdal)
-library(sp)
+library(sf)
 library(rgeos)
 library(terra)
 library(parallel)
 #
 # Base maps
-  ecoreg <- readOGR(dsn = "D:/Capas/World/wwf/Ecoregions2017", layer = "eco_col") #Pais
-  ecoreg <- spTransform(ecoreg, CRS("+proj=longlat +datum=WGS84")) # WGS84
   dem_ALOS <- "D:/Capas/coldem30/alos_dem_col.tif"
   dem <- raster(dem_ALOS)
 #
 # GBIF data
-  registros <- readRDS("registros_ele.rds")
-#
+  records <- readRDS("C:/Users/Dell-PC/Dropbox/CO_DBdata/GBIF_data/records_combined.rds")   # .rds file with GBIF records
+  #
 # loop
   resultados_especies <- list() # result list
   G1 <- unique(registros$scientificName1)[[56]] # species subset
