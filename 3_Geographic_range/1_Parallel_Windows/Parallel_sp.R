@@ -4,114 +4,90 @@
   setwd("C:/Users/Dell-PC/Dropbox/CO_DBdata")
 #
 # R packages
-    library(raster)
-    library(dplyr)
-    library(rgdal)
-    library(sf)
-    library(rgeos)
-    library(terra)
-    library(foreach)
-    library(doParallel)
-#
-# Base maps
-  dem_ALOS <- "./SIG/coldem30/alos_dem_col.tif"
-  dem <- raster(dem_ALOS)
-#
-# GBIF data
-  registros <- readRDS("./elevation_range/records_ele.rds")
-# registros <- readRDS("./elevation_range/varios_ele.rds") # species with Gromphas aeruginosa, Ontherus sulcator, Uroxys pygmaeus
-#
-  # Species subset 
-  G1 <- unique(registros$scientificName1)[[2]]
-#  G1 <- unique(registros$scientificName)
-#
-# Function to process each species
-   process_species <- function(especie) 
-{
-    cada_especie <- registros[registros$scientificName1 == especie, ]
-  #cada_especie <- registros[registros$scientificName == especie, ]
-  #
-  # GBIF records by species
-    coordenadas <- cada_especie[, c("decimalLongitude", "decimalLatitude")]
-    coordenadas <- na.omit(coordenadas)
-    coordenadas <- coordenadas[!duplicated(coordenadas), ]
-    puntos <- SpatialPoints(coordenadas, proj4string = CRS("+proj=longlat +datum=WGS84"))
-    puntos_col <- over(puntos, as(ecoreg, "SpatialPolygons"))
-    puntos_col <- !is.na(puntos_col)
-    puntos_col <- puntos[puntos_col, ]
-    if (length(puntos_col) == 0) {
-      cat("No records in Colombia for:", especie, "\n")
-      return(NULL)
+  library(raster)
+  library(rgdal)
+  library(sf)
+  library(rgeos)
+  library(terra)
+  library(dplyr)
+  library(doParallel)
+  library(foreach)
+  
+  # Load the data and layers
+  records <- readRDS("C:/Users/Dell-PC/Dropbox/CO_DBdata/GBIF_data/records_combined_ele.rds")
+  dem <- rast("D:/Capas/America/dem/srtm/col_srtm90m.tif")
+  divisions <- st_read("D:/Capas/Colombia/Colombia/COL_adm0.shp")
+  # Get unique species and limit to 243
+  species_subset <- sort(unique(records$scientificName1))[1:5]
+  
+  # Define the function to process each species
+  process_species <- function(species, records, divisions, dem) {
+    cat("Processing species:", species, "\n")
+    
+    each_species <- records[records$scientificName1 == species, ]
+    coordinates <- each_species[, c("decimalLongitude", "decimalLatitude")]
+    coordinates <- na.omit(coordinates)  # Remove rows with NA values
+    coordinates <- coordinates[!duplicated(coordinates), ]  # Remove duplicate coordinates
+    
+    if (nrow(coordinates) == 0) {
+      cat("No records for:", species, "\n")
+      return(NULL)  # Return NULL if there are no records
     }
-    coordenadas <- as.data.frame(puntos_col)
-  #
-  # Polygon based on the number of records 1, 2, 3 ...
-    if (nrow(coordenadas) <= 2) {
-      if (nrow(coordenadas) == 1) {
-        punto <- SpatialPoints(coordenadas, proj4string = CRS("+proj=longlat +datum=WGS84"))
-        poligono_sp <- gBuffer(punto, width = 0.5)
-      } else {
-        linea <- SpatialLines(list(Lines(list(Line(coordenadas)), "1")), proj4string = CRS("+proj=longlat +datum=WGS84"))
-        poligono_sp <- gBuffer(linea, width = 0.5)
-        proj4string(poligono_sp) <- CRS("+proj=longlat +datum=WGS84")
-      }
+    
+    # Convert coordinates to a spatial object
+    points <- st_as_sf(coordinates, coords = c("decimalLongitude", "decimalLatitude"), crs = 4326)
+    
+    # Create a polygon based on the number of records
+    if (nrow(coordinates) == 1) {
+      polygon_sf <- st_buffer(st_transform(points, crs = 3857), dist = 10000)
+    } else if (nrow(coordinates) == 2) {
+      line <- st_union(points) %>% st_cast("LINESTRING")
+      polygon_sf <- st_buffer(st_transform(line, crs = 3857), dist = 10000)
     } else {
-      indices_poligono <- chull(coordenadas$decimalLongitude, coordenadas$decimalLatitude)
-      poligono <- coordenadas[indices_poligono, ]
-      poligono_sp <- SpatialPolygons(list(Polygons(list(Polygon(poligono)), "1")))
-      proj4string(poligono_sp) <- CRS("+proj=longlat +datum=WGS84")
+      polygon_sf <- st_convex_hull(st_union(points))
+      polygon_sf <- st_buffer(st_transform(polygon_sf, crs = 3857), dist = 10000)
     }
-    pol_sol <- tryCatch(gIntersects(ecoreg, poligono_sp, byid = TRUE), error = function(e) NULL)
-    if (!is.null(pol_sol)) {
-      indice_sol <- which(pol_sol)
-      if (length(indice_sol) > 0) {
-        sol_com <- ecoreg[indice_sol, ]
-        sol_com <- gBuffer(sol_com, byid = TRUE, width = 0)
-        contorno <- gUnaryUnion(sol_com)
-  #    
-  # Adjust contour to the altitudinal limits of the species
-    dem_contorno <- mask(dem, contorno)
-    altura_max <- max(cada_especie$alos_ele, na.rm = TRUE) + 100
-    altura_min <- max(min(cada_especie$alos_ele, na.rm = TRUE) - 100, 0)
-    raster_altitud_ajustada <- dem_contorno >= altura_min & dem_contorno <= altura_max
-    spat_raster <- terra::rast(raster_altitud_ajustada)
-    #
-    # Raster to polygon
-      dem_ajustado <- terra::as.polygons(spat_raster)
-      poligonos_valor_1 <- dem_ajustado[dem_ajustado$layer == 1, ]
-      poligono_union <- terra::aggregate(poligonos_valor_1)
-  #
-  # Save
-    nombre_archivo <- paste0(gsub(" ", "_", especie), ".shp")
-    ruta_archivo <- file.path("D:/Doctorado/Tesis/GBIF/contorno", nombre_archivo)
-    writeVector(poligono_union, ruta_archivo, filetype = "ESRI Shapefile")
-    return(nombre_archivo)
+    
+    polygon_sf <- st_transform(polygon_sf, crs = 4326)
+    polygon_col <- st_intersection(polygon_sf, divisions)
+    
+    if (nrow(polygon_col) > 0) {
+      dem_contour <- crop(dem, polygon_col)
+      dem_contour <- mask(dem_contour, polygon_col)
+      
+      max_elevation <- max(each_species$elevation, na.rm = TRUE) + 100
+      min_elevation <- max(min(each_species$elevation, na.rm = TRUE) - 100, 0)
+      
+      adjusted_altitude_raster <- dem_contour >= min_elevation & dem_contour <= max_elevation
+      contours <- terra::as.polygons(adjusted_altitude_raster, dissolve = TRUE)
+      contours <- contours[contours$elevation == 1, ]
+      
+      file_name <- paste0(gsub(" ", "_", species), ".shp")
+      file_path <- file.path("D:/Doctorado/Tesis/GBIF/contorno", file_name)
+      writeVector(contours, file_path, filetype = "ESRI Shapefile", overwrite = TRUE)
+      cat("Contour saved as:", file_path, "\n")
     } else {
-      cat("No overlapping polygons found for:", especie, "\n")
-      return(NULL)
+      cat("No overlapping polygons found for:", species, "\n")
     }
-  } else {
-    cat("Error intersecting polygons for:", especie, "\n")
-    return(NULL)
+  # Clean up memory after processing
+  rm(each_species, coordinates, points, polygon_sf, polygon_col, dem_contour, adjusted_altitude_raster, contours)
+  gc()  # Call garbage collector to free memory
   }
-}
-#
-# Set up parallel backend to use 4 cores
+  # Set up parallel backend to use 4 cores
   cl <- makeCluster(4)
+  
+  # Export required variables to the cluster
+  clusterExport(cl, varlist = c("records", "divisions", "dem", "st_as_sf", "st_buffer", "st_transform", "st_union", "st_convex_hull", "crop", "mask", "terra::as.polygons", "writeVector"))
+  
   registerDoParallel(cl)
-  #
+  
   # Parallel processing
-    species_result <- foreach(especie = G1, .combine = 'c', .packages = c('raster', 'rgdal', 'sp', 'rgeos', 'terra', 'dplyr')) %dopar% 
-    {
-    process_species(especie)
-    }
-  #
-  # Stop the cluster
+  species_results <- foreach(species = species_subset, .combine = 'c', 
+                             .packages = c('sf', 'terra', 'dplyr')) %dopar% {
+                               process_species(species, records, divisions, dem)
+                               gc()  # Force garbage collection to free memory after each iteration
+                               return(result)
+                               }
+  
   stopCluster(cl)
-
-# Convert the list of results to a named list
-names(species_result) <- G1
-
-# Filter out NULL results
-species_result <- species_result[!sapply(species_result, is.null)]
-
+  

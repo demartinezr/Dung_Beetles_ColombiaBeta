@@ -57,12 +57,13 @@ library(dplyr)
       )
     ) %>%
     ungroup()
+  write.table(morphometrics_mean, "morphometrics_mean.txt")
+  nosp <- morphometrics_mean[!(morphometrics_mean$scientificName %in% db$scientificName), ]
 #
 # Merge morphometrics measurements and behaviour traits in Dung beetles data set
- DB_data <- read_excel("C:./abundance/Scarabaeinae_database_2024.xlsx", sheet="Scarabaeinae_database_2024")
- behaviour <- read_excel("./traits/behaviour/DB_Distributions_traits_2024.xlsx", sheet="DB_Distributions_traits")
- behaviour <- behaviour[c("scientificName", "nest_guild", "diet_range", "activity")]
- DB_data <- left_join(DB_data, morphometrics_mean, by = "scientificName") 
- DB_data <- left_join(DB_data, behaviour, by = "scientificName")
-#write.table(morphometrics, "morphometrics.txt")
+# DB_data <- read_excel("C:./abundance/Scarabaeinae_database_2024.xlsx", sheet="Scarabaeinae_database_2024")
+# behaviour <- read_excel("./traits/behaviour/DB_Distributions_traits_2024.xlsx", sheet="DB_Distributions_traits")
+# behaviour <- behaviour[c("scientificName", "nest_guild", "diet_range", "activity")]
+# DB_data <- left_join(DB_data, morphometrics_mean, by = "scientificName") 
+# DB_data <- left_join(DB_data, behaviour, by = "scientificName")
  

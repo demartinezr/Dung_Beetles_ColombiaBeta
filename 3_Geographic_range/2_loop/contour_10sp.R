@@ -1,123 +1,146 @@
-# Loop for obtaining geographic ranges from GBIF records, ecoregions, and 
+# Protocol to obtain geographic ranges from GBIF records, convex hulls, and 
 # altitudinal ranges (DEM)
-setwd("D:/Doctorado/Tesis/GBIF")
+# Load necessary libraries
 #
-# R packages
-library(raster)
-library(dplyr)
-library(ggplot2)
-library(rgdal)
-library(sf)
-library(rgeos)
-library(terra)
-library(parallel)
+  library(raster)
+  library(dplyr)
+  library(ggplot2)
+  library(rgdal)
+  library(sf)
+  library(rgeos)
+  library(terra)
 #
-# Base maps
-  dem_ALOS <- "D:/Capas/coldem30/alos_dem_col.tif"
-  dem <- raster(dem_ALOS)
-#
-# GBIF data
-  records <- readRDS("C:/Users/Dell-PC/Dropbox/CO_DBdata/GBIF_data/records_combined.rds")   # .rds file with GBIF records
-  #
-# loop
-  resultados_especies <- list() # result list
-  G1 <- unique(registros$scientificName1)[[56]] # species subset
-  for (especie in G1) {
-  cada_especie <- registros[registros$scientificName1 == especie, ]
-  # GBIF records by specie
-    coordenadas <- cada_especie[, c("decimalLongitude", "decimalLatitude")]
-    coordenadas <- na.omit(coordenadas)
-    coordenadas <- coordenadas[!duplicated(coordenadas), ]
-    puntos <- SpatialPoints(coordenadas, proj4string = CRS("+proj=longlat +datum=WGS84"))  # coordinates to SpatialPoints
-    puntos_col <- over(puntos, as(ecoreg, "SpatialPolygons")) # Filter points in Colombia
-    puntos_col <- !is.na(puntos_col)
-    puntos_col <- puntos[puntos_col, ]
-    if (length(puntos_col) == 0) {
-    cat("No records in Colombia for:", especie, "\n")
-    next
-    }
-    coordenadas <- as.data.frame(puntos_col)
-  # polygon based on the number of records 1, 2, 3 ...
-    if (nrow(coordenadas) <= 2) {
-    if (nrow(coordenadas) == 1) {
-      # Buffer on a single coordinate
-        punto <- SpatialPoints(coordenadas, proj4string = CRS("+proj=longlat +datum=WGS84"))
-        punto <- spTransform(punto, proj_crs)
-        poligono_sp <- gBuffer(punto, width = 0.5) # Buffer de 0.01 grades (~1 km)
-        } else {
-      # Polygon based on two coordinates
-        linea <- SpatialLines(list(Lines(list(Line(coordenadas)), "1")), proj4string = CRS("+proj=longlat +datum=WGS84"))
-        linea <- spTransform(linea, proj_crs)
-        poligono_sp <- gBuffer(linea, width = 0.5) # Buffer de 0.01 grades (~1 km)
-        proj4string(poligono_sp) <- CRS("+proj=longlat +datum=WGS84")
-        }
-        } else {
-      # Polygon based on 3 or more cordinates
-        indices_poligono <- chull(coordenadas$decimalLongitude, coordenadas$decimalLatitude)
-        poligono <- coordenadas[indices_poligono, ]
-        poligono_sp <- SpatialPolygons(list(Polygons(list(Polygon(poligono)), "1")))
-        proj4string(poligono_sp) <- CRS("+proj=longlat +datum=WGS84")
-        }
-        pol_sol <- tryCatch(gIntersects(ecoreg, poligono_sp, byid = TRUE), error = function(e) NULL) # Polygon intersection
-        if (!is.null(pol_sol)) {
-        indice_sol <- which(pol_sol) # Indices of overlapping polygons
-        if (length(indice_sol) > 0) {
-        sol_com <- ecoreg[indice_sol, ] # Extract the complete overlapping polygons
-        sol_com <- spTransform(sol_com, proj_crs)
-        sol_com <- gBuffer(sol_com, byid=TRUE, width=0)
-        contorno <- gUnaryUnion(sol_com)
-  # Adjust contour to the altitudinal limits of the species
-      # Clipping DEM by contours
-        dem_contorno <- mask(dem, contorno)
-      # Altitudinal limits by species
-        altura_max <- max(cada_especie$alos_ele, na.rm = TRUE) + 100
-        altura_min <- max(min(cada_especie$alos_ele, na.rm = TRUE) - 100, 0)
-        raster_altitud_ajustada <- dem_contorno >= altura_min & dem_contorno <= altura_max # Logical raster marking TRUE for cells within the altitudinal range
-        spat_raster <- terra::rast(raster_altitud_ajustada)
-      # Raster to polygon
-        dem_ajustado <- terra::as.polygons(spat_raster) # SpatRaster to polygons
-        poligonos_valor_1 <- dem_ajustado[dem_ajustado$layer == 1, ] # Select only polygons with a value of 1
-        poligono_union <- terra::aggregate(poligonos_valor_1) # Merge polygons with a value of 1 into a single polygon
-  # Save
-    nombre_archivo <- paste0("poligono_", gsub(" ", "_", especie), ".shp")
-    ruta_archivo <- file.path("D:/Doctorado/Tesis/GBIF/contorno", nombre_archivo)
-    writeVector(poligono_union, ruta_archivo, filetype = "ESRI Shapefile")
-  # Save the filename in the species results list
-    resultados_especies[[especie]] <- nombre_archivo
+  # Load the data and layers
+  records <- readRDS("C:/Users/Dell-PC/Dropbox/CO_DBdata/GBIF_data/records_combined_ele.rds")
+  dem <- rast("D:/Capas/America/dem/srtm/col_srtm90m.tif")
+  divisions <- st_read("D:/Capas/Colombia/Colombia/COL_adm0.shp")
+  # Select the species
+  species <- sort(unique(records$scientificName1))[52]
+  cat("Processing species:", species, "\n")
+  each_species <- records[records$scientificName1 == species, ]
+  # Get coordinates for the selected species
+  coordinates <- each_species[, c("decimalLongitude", "decimalLatitude")]
+  coordinates <- na.omit(coordinates)  # Remove rows with NA values
+  coordinates <- coordinates[!duplicated(coordinates), ]  # Remove duplicate coordinates
+  # Check if there are records for the species
+  if (nrow(coordinates) == 0) {
+    cat("No records for:", species, "\n")
+  } else {
+    # Convert coordinates to a spatial object
+    points <- st_as_sf(coordinates, coords = c("decimalLongitude", "decimalLatitude"), crs = 4326)
+    # Create a polygon based on the number of records
+    if (nrow(coordinates) == 1) {
+      polygon_sf <- st_buffer(st_transform(points, crs = 3857), dist = 10000)
+    } else if (nrow(coordinates) == 2) {
+      line <- st_union(points) %>% st_cast("LINESTRING")
+      polygon_sf <- st_buffer(st_transform(line, crs = 3857), dist = 10000)
     } else {
-    cat("No overlapping polygons found for:", especie, "\n")
+      polygon_sf <- st_convex_hull(st_union(points))
+      polygon_sf <- st_buffer(st_transform(polygon_sf, crs = 3857), dist = 10000) 
     }
+  # Adjust the polygon to the divisions of Colombia
+    polygon_sf <- st_transform(polygon_sf, crs = 4326)
+    polygon_col <- st_intersection(polygon_sf, divisions)
+    polygon_col <- vect(polygon_col)
+    if (nrow(polygon_col) > 0) {
+      # Crop and mask the DEM with the adjusted polygon
+      dem_contour <- crop(dem, polygon_col)
+      dem_contour <- mask(dem_contour, polygon_col)
+      # Define the altitude limits
+      max_elevation <- max(each_species$elevation, na.rm = TRUE) + 100
+      min_elevation <- max(min(each_species$elevation, na.rm = TRUE) - 100, 0)
+      # Create a logical raster with cells within the altitude range
+      adjusted_altitude_raster <- dem_contour >= min_elevation & dem_contour <= max_elevation
+      # Get the contour of the adjusted raster
+      contours <- terra::as.polygons(adjusted_altitude_raster, dissolve = TRUE)
+      contours <- contours[contours$elevation == 1, ]
+      # Save the resulting contour
+      file_name <- paste0(gsub(" ", "_", species), ".shp")
+      file_path <- file.path("D:/Doctorado/Tesis/GBIF/contorno", file_name)
+      writeVector(contours, file_path, filetype = "ESRI Shapefile", overwrite=TRUE)
+      
+      cat("Contour saved as:", file_path, "\n")
     } else {
-    cat("Error intersecting polygons for:", especie, "\n")
-   }
+      cat("No overlapping polygons found for:", species, "\n")
+    }
   }
-
-plot(poligono_union)
-################# Visualización ####################
-  ### Ruta al directorio que contiene los archivos shapefile
-  directorio_shapes <- "D:/Doctorado/Tesis/GBIF/contorno"
-  ### Obtener la lista de archivos de shapefile en el directorio
-  archivos_shapes <- list.files(directorio_shapes, pattern = "\\.shp$", full.names = TRUE)
-  ### Crear una lista para almacenar los objetos de los shapefiles
-  lista_shapefiles <- list()
-  ### Iterar sobre los archivos de shapefile y cargarlos en la lista
-  for (archivo_shape in archivos_shapes)
-    {
-    ### Obtener el nombre de la especie del archivo shape
-    nombre_especie <- tools::file_path_sans_ext(basename(archivo_shape))
-    ### Cargar el shapefile y agregarlo a la lista
-    shapefile <- readOGR(dsn = archivo_shape, layer = tools::file_path_sans_ext(basename(archivo_shape)))
-    lista_shapefiles[[nombre_especie]] <- shapefile
+  
+###############################################################################
+  library(raster)
+  library(dplyr)
+  library(ggplot2)
+  library(rgdal)
+  library(sf)
+  library(rgeos)
+  library(terra)
+  #
+  # Load the data and layers
+  records <- readRDS("C:/Users/Dell-PC/Dropbox/CO_DBdata/GBIF_data/records_combined_ele.rds")
+  dem <- rast("D:/Capas/America/dem/srtm/col_srtm90m.tif")
+  divisions <- st_read("D:/Capas/Colombia/Colombia/COL_adm0.shp")
+  # function for multiples species
+  species_subset <- sort(unique(records$scientificName1))
+  
+  # Define the function to process each species
+  process_species <- function(species) {
+    cat("Processing species:", species, "\n")
+    each_species <- records[records$scientificName1 == species, ]
+    # Get coordinates for the selected species
+    coordinates <- each_species[, c("decimalLongitude", "decimalLatitude")]
+    coordinates <- na.omit(coordinates)  # Remove rows with NA values
+    coordinates <- coordinates[!duplicated(coordinates), ]  # Remove duplicate coordinates
+    # Check if there are records for the species
+    if (nrow(coordinates) == 0) {
+      cat("No records for:", species, "\n")
+      return(NULL)  # Return NULL if there are no records
     }
-
-  sp <- data.frame(subset(registros, scientificName1 == "Canthon septemmaculatus"))
-  coordenadas <- sp[,c("decimalLongitude", "decimalLatitude")]
-  coordenadas <- na.omit(coordenadas)
-  coordenadas <- coordenadas[!duplicated(coordenadas), ]
-par(mar=c(2,2,1,1)) 
-plot(lista_shapefiles[[15]], main = names(lista_shapefiles)[1])
-plot(ecoreg)
-plot(puntos_en_colombia, add = TRUE, pch = 2)
-points(coordenadas$decimalLongitude, coordenadas$decimalLatitude, col = "red", pch = 20, cex=2)
-
-
+    # Convert coordinates to a spatial object
+    points <- st_as_sf(coordinates, coords = c("decimalLongitude", "decimalLatitude"), crs = 4326)
+    # Create a polygon based on the number of records
+    if (nrow(coordinates) == 1) {
+      polygon_sf <- st_buffer(st_transform(points, crs = 3857), dist = 50000)
+    } else if (nrow(coordinates) == 2) {
+      line <- st_union(points) %>% st_cast("LINESTRING")
+      polygon_sf <- st_buffer(st_transform(line, crs = 3857), dist = 50000)
+    } else {
+      polygon_sf <- st_convex_hull(st_union(points))
+      polygon_sf <- st_buffer(st_transform(polygon_sf, crs = 3857), dist = 50000) 
+    }
+    # Adjust the polygon to the divisions of Colombia
+    polygon_sf <- st_transform(polygon_sf, crs = 4326)
+    polygon_col <- st_intersection(polygon_sf, divisions)
+    polygon_col <- vect(polygon_col)
+    if (nrow(polygon_col) > 0) {
+      # Crop and mask the DEM with the adjusted polygon
+      dem_contour <- crop(dem, polygon_col)
+      dem_contour <- mask(dem_contour, polygon_col)
+      # Define the altitude limits
+      max_elevation <- max(each_species$elevation, na.rm = TRUE) + 100
+      min_elevation <- max(min(each_species$elevation, na.rm = TRUE) - 100, 0)
+      # Create a logical raster with cells within the altitude range
+      adjusted_altitude_raster <- dem_contour >= min_elevation & dem_contour <= max_elevation
+      # Get the contour of the adjusted raster
+      contours <- terra::as.polygons(adjusted_altitude_raster, dissolve = TRUE)
+      contours <- contours[contours$elevation == 1, ]
+      if (nrow(contours) > 0) {
+        contours$scientificName <- gsub(" ", "_", species)
+      # Save the resulting contour
+      file_name <- paste0(gsub(" ", "_", species), ".shp")
+      file_path <- file.path("D:/Doctorado/Tesis/GBIF/contorno", file_name)
+      writeVector(contours, file_path, filetype = "ESRI Shapefile", overwrite = TRUE)
+      cat("Contour saved as:", file_path, "\n")
+    } else {
+      cat("No overlapping polygons found for:", species, "\n")
+    }
+    }
+   # Release memory
+    rm(each_species, coordinates, points, polygon_sf, polygon_col, dem_contour, adjusted_altitude_raster, contours)
+    gc()  # Call garbage collector
+  }
+  # Process each species in the species_subset
+  for (species in species_subset) {
+    process_species(species)
+  }
+  
+  
+  
