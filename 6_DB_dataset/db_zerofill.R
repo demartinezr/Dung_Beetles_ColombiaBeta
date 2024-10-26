@@ -1,6 +1,6 @@
 setwd("C:/Users/Dell-PC/Dropbox/CO_DBdata/SIG/inputs")
 
-##### Ingest and clean beetle data #####
+##### Ingest and clean beetle data by Jacob Socolar, adapted code by DEMR ####
 #
 library(readxl)
 # Dung beetles data set project all projects Western cordillera, llanos, Paramos, beta diversity
