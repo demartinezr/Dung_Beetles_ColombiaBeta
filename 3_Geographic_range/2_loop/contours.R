@@ -1,7 +1,7 @@
 # Protocol to obtain geographic ranges from GBIF records, convex hulls, and 
 # altitudinal ranges (DEM)
-# Load necessary libraries
 #
+# Libraries
   library(raster)
   library(dplyr)
   library(ggplot2)
@@ -10,11 +10,14 @@
   library(rgeos)
   library(terra)
 #
-  # Load the data and layers
+  # dataset and Colombia shapefile and DEM STRM 90m
   records <- readRDS("C:/Users/Dell-PC/Dropbox/CO_DBdata/GBIF_data/records_combined_ele.rds")
   dem <- rast("D:/Capas/America/dem/srtm/col_srtm90m.tif")
   divisions <- st_read("D:/Capas/Colombia/Colombia/COL_adm0.shp")
-  # Select the species
+#
+# Geographic ranges for a single species
+#
+# Select the species
   species <- sort(unique(records$scientificName1))[52]
   cat("Processing species:", species, "\n")
   each_species <- records[records$scientificName1 == species, ]
@@ -66,6 +69,8 @@
   }
   
 ###############################################################################
+# Get geographic ranges for a multiple species
+#  
   library(raster)
   library(dplyr)
   library(ggplot2)
@@ -74,21 +79,19 @@
   library(rgeos)
   library(terra)
   #
-  # Load the data and layers
+# Dataset, Colombia shapefile and DEM SRTM 90m
   records <- readRDS("C:/Users/Dell-PC/Dropbox/CO_DBdata/GBIF_data/records_combined_ele.rds")
   dem <- rast("D:/Capas/America/dem/srtm/col_srtm90m.tif")
   divisions <- st_read("D:/Capas/Colombia/Colombia/COL_adm0.shp")
-  # function for multiples species
-  species_subset <- sort(unique(records$scientificName1))
-  
-  # Define the function to process each species
+# function for multiples species
+  #
   process_species <- function(species) {
     cat("Processing species:", species, "\n")
     each_species <- records[records$scientificName1 == species, ]
-    # Get coordinates for the selected species
+    # Get coordinates pof species i
     coordinates <- each_species[, c("decimalLongitude", "decimalLatitude")]
-    coordinates <- na.omit(coordinates)  # Remove rows with NA values
-    coordinates <- coordinates[!duplicated(coordinates), ]  # Remove duplicate coordinates
+    coordinates <- na.omit(coordinates)
+    coordinates <- coordinates[!duplicated(coordinates), ]
     # Check if there are records for the species
     if (nrow(coordinates) == 0) {
       cat("No records for:", species, "\n")

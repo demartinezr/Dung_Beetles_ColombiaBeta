@@ -182,43 +182,49 @@ library(readxl)
   db5 <- merge(db4, biogeography2, by = "scientificName", all = TRUE)
 # saveRDS(db5, "C:/Users/Dell-PC/Dropbox/CO_DBdata/abundance/db_zerofill.RDS")
 #
+####### Biogeographic clipping
+#
 # add available species/point combinations in range column, based on shapefiles
-#  library(doParallel)
-#  library(foreach)
+# library(doParallel)
+# library(foreach)
   library(sf)
   library(dplyr)
 #
+# combined the 243 shapefiles
+#  
+# shapefiles_list <- list.files("D:/Doctorado/Tesis/GBIF/contorno", pattern = "*.shp", full.names = TRUE)
+# shapefiles_combined <- lapply(shapefiles_list, st_read) %>% do.call(rbind, .)
+# saveRDS(shapefiles_combined, "geographic_range.rds")
+#
+# Obtaining the presence of sampling points within each species' geographical range:
+# if a point falls within the permitted range, it is marked with a 1 in the "combinations" column;
+# otherwise, it is assigned a 0, indicating that the point is not within the geographical range area.
+#
   db5 <- readRDS("C:/Users/Dell-PC/Dropbox/CO_DBdata/abundance/db_zerofill.RDS")
-  shapefiles_combined <-  readRDS("C:/Users/Dell-PC/Documents/geographic_range.rds")
-#  shapefiles_list <- list.files("D:/Doctorado/Tesis/GBIF/contorno", pattern = "*.shp", full.names = TRUE)
-#  shapefiles_combined <- lapply(shapefiles_list, st_read) %>% do.call(rbind, .)
-#  saveRDS(shapefiles_combined, "geographic_range.rds")
-#
-#
+  selected_shapefiles <-  readRDS("C:/Users/Dell-PC/Documents/geographic_range.rds")
+  #
   df_occurrence <- db5[,c("scientificName","point","lon", "lat")]
   df_occurrence <- st_as_sf(df_occurrence, coords = c("lon", "lat"), crs = 4326)
   df_occurrence$combinations <- 0
-  selected_shapefiles <- readRDS("C:/users/Dell-PC/documents/geographic_range.rds")
   for (i in 1:nrow(selected_shapefiles)) {
-    # Filtrar por nombre científico del shapefile
+    # Filter by species column in shapefiles
     scientific_match <- selected_shapefiles$scientific[i]
-    # Extraer el polígono correspondiente
+    # select species range polygon shapefile
     polygon <- selected_shapefiles[i, ]
-    # Encontrar las filas de df_occurrence que coincidan con el nombre científico
+    # get rows in df_occurrence that match based on scientificName
     df_occurrence_match <- df_occurrence %>% 
       filter(scientificName == scientific_match)
-    # Identificar los puntos dentro del polígono
+    # identify points within species range polygons
     contained <- st_within(df_occurrence %>% st_as_sf(coords = c("lon", "lat"), crs = 4326), polygon, sparse = FALSE)
     df_occurrence$combinations[which(df_occurrence$scientificName == scientific_match & rowSums(contained) > 0)] <- 1
     rm(scientific_match, polygon, df_occurrence_match, contained)
     gc()
     }
-  
-  # Actualizar la columna 'combinations' en db5
+  #
+# add available combinations for species and points in db5
   db5$combinations <- df_occurrence$combinations
-  
-  
 # saveRDS(db5, "C:/Users/Dell-PC/Dropbox/CO_DBdata/abundance/db_zerofillcomb.RDS")
+  db5 <- readRDS("C:/Users/Dell-PC/Dropbox/CO_DBdata/abundance/db_zerofillcomb.RDS")
   # expand 250 m, upper and lower boundaries 
   db5$sp_elev_lower2 <- pmin(db5$sp_elev_lower, (db5$sp_elev_lower + db5$sp_elev_upper)/2 - 250)
   db5$sp_elev_upper2 <- pmax(db5$sp_elev_upper, (db5$sp_elev_lower + db5$sp_elev_upper)/2 + 250)
@@ -236,101 +242,26 @@ library(readxl)
   # sum(db_obs$pt_slope == "CC: Western" & db_obs$sp_slope_CCw == 0)
   # sum(db_obs$pt_slope == "WC: Eastern" & db_obs$sp_slope_WCe == 0)
   # sum(db_obs$pt_slope == "WC: Western" & db_obs$sp_slope_WCw == 0)
-  
-##### Biogeographic clipping #####
+  #
+# standard elevation
   db5$elev_standard <- 2*(db5$elev_ALOS - db5$sp_elev_lower2)/(db5$sp_elev_upper2 - db5$sp_elev_lower2) - 1
   hist(db5$elev_standard[db5$abundance > 0])
   
   View(db5[db5$elev_standard > 3 & db5$abundance > 0, ])
 #  
 # add traits to dataset
-  db_clipped <- readRDS("C:/Users/Dell-PC/Dropbox/CO_DBdata/abundance/db_clipped.RDS")
   beha <- read_excel("C:/Users/Dell-PC/Dropbox/CO_DBdata/traits/behaviour/DB_Distributions_traits_2024.xlsx", sheet="DB_Distributions_traits")
   beha <- beha[c("scientificName", "nest_guild", "diet_range", "activity")]
   morpho <- read.table("C:/Users/Dell-PC/Dropbox/CO_DBdata/traits/morphometrics/morphometrics_mean.txt")
   morpho <- morpho[morpho$scientificName %in% beha$scientificName, ]
   morphobeha <- merge(beha, morpho, by = "scientificName")
-  db_clipped <- merge(db_clipped, morphobeha, by ="scientificName")
-  db_clipped$nest_guild <- as.factor(db_clipped$nest_guild)
-  db_clipped$diet_range <- as.factor(db_clipped$diet_range)
-  db_clipped$activity <- as.factor(db_clipped$activity)
-  db_clipped$subregion <- as.factor(db_clipped$subregion)
-  db_clipped$cluster <- as.factor(db_clipped$cluster)
-  db_clipped$bodysize <- as.numeric(db_clipped$bodysize)
-  db_clipped$legratio <- as.numeric(db_clipped$legratio)
-  saveRDS(db_clipped, "C:/Users/Dell-PC/Dropbox/CO_DBdata/abundance/db_clipped_traits.RDS")  
-  db_clipped <- readRDS("C:/Users/Dell-PC/Dropbox/CO_DBdata/abundance/db_clipped_traits.RDS")
+  db5 <- merge(db5, morphobeha, by ="scientificName")
+  db5$nest_guild <- as.factor(db5$nest_guild)
+  db5$diet_range <- as.factor(db5$diet_range)
+  db5$activity <- as.factor(db5$activity)
+  db5$subregion <- as.factor(db5$subregion)
+  db5$cluster <- as.factor(db5$cluster)
+  db5$bodysize <- as.numeric(db5$bodysize)
+  db5$legratio <- as.numeric(db5$legratio)
+#  saveRDS(db5, "C:/Users/Dell-PC/Dropbox/CO_DBdata/abundance/db5_traits.RDS")  
 #
-#  add available/unavailable combinations (1/0) in "combined" column
-  library(sf)
-  library(dplyr)
-  df_occurrence <- st_as_sf(db_clipped, coords = c("lon", "lat"), crs = 4326)
-  # Create an empty data frame to store results
-  results <- data.frame(
-    point = df_occurrence$point,
-    scientificName = df_occurrence$scientificName,
-    combined = 0  # Inicializa todo en 0
-  )
-  shapefiles_list <- list.files("D:/Doctorado/Tesis/GBIF/contorno", pattern = "*.shp", full.names = TRUE)
-  # Loop through each shapefile
-  for (shapefile in shapefiles_list) {
-    # Read the shapefile
-    shapefile_species <- st_read(shapefile)
-    # Check if occurrence points fall within the species range
-    df_joined <- st_join(df_occurrence, shapefile_species, join = st_within)
-     # Combine results
-    results$combined[!is.na(df_joined$geometry)] <- 1
-    # Liberar memoria
-    rm(shapefile_species, df_joined)
-    gc()
-  }
-  
-  
-#  
-# Generalized Linear Mixed Model (GLMM) with glmer
-  
-    library(lme4)
-  db_mod1_lme4 <- glmer(
-    abundance ~ pasture + elev_standard + elev_standard_squared + nest_guild + 
-      diet_range + activity + bodysize + legratio + subregion + cluster + 
-      (1 + pasture + elev_standard + elev_standard_squared | scientificName) +
-      (1 | subregion_species) + 
-      (1 | cluster_species),
-    data = db_clipped,
-    family = negative.binomial(2),
-    control = glmerControl(optCtrl = list(maxfun = 50000)),
-    )
-  # summary of adjust model
-  summary(db_mod1_lme4)
-  #
-# Generalized Linear Mixed Model (GLMM) with glmmTMB
-# protocol based on https://fhernanb.github.io/libro_modelos_mixtos/pac-glmmTMB.html
-  library(glmmTMB)
-  db_mod1_glmmTMB <- glmmTMB(
-    abundance ~ pasture + elev_standard + elev_standard_squared + nest_guild + 
-      diet_range + activity + bodysize + legratio +  
-      (1 + pasture + elev_standard + elev_standard_squared | scientificName) +
-      (1 | subregion_species) + 
-      (1 | cluster_species),
-    data = db_clipped,
-    family = nbinom2,
-    control=glmmTMBControl(optCtrl = list(maxit = 1000000)),
-  )
-  # summary of adjust model
-  summary(db_mod1_glmmTMB)
-  ##### brms model #####
-  library(brms)
-  db_clipped$elev_standard_squared <- db_clipped$elev_standard^2
-  db_clipped$subregion_species <- paste0(db_clipped$subregion, "__", db_clipped$scientificName)
-  db_clipped$cluster_species <- paste0(db_clipped$cluster, "__", db_clipped$scientificName)
-  db_clipped <- na.omit(db_clipped)
-  db_clipped$abundance <- as.numeric(db_clipped$abundance)
-  
-  db_mod1 <- 
-    brm(abundance ~ pasture + elev_standard + elev_standard_squared + day + 
-          (1 + pasture + elev_standard + elev_standard_squared + day | scientificName) +
-          (1 | subregion_species) + (1 | cluster_species), 
-        family = "negbinomial", data = db_clipped, 
-        chains = 3, cores = 3, backend = 'cmdstanr',
-        refresh = 10)
-  
