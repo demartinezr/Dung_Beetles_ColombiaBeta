@@ -1,8 +1,16 @@
 setwd("C:/Users/Dell-PC/Dropbox/CO_DBdata/SIG/inputs")
-
+#
 ##### Ingest and clean beetle data by Jacob Socolar, adapted code by DEMR ####
 #
-library(readxl)
+# dataset zero filled, biogeography format, combinations restriction, distance_to_range,
+# standarized elevation and traits  
+#
+  library(readxl)
+  library(sf)
+  library(dplyr)
+  library(glmmTMB)
+  library(ggplot2)
+#
 # Dung beetles data set project all projects Western cordillera, llanos, Paramos, beta diversity
   db <- read_excel("C:/Users/Dell-PC/Dropbox/CO_dbdata/abundance/Scarabaeinae_database_2024.xlsx", sheet = "Scarabaeinae_database_2024")
   db$scientificName1 <- gsub("_", " ", db$scientificName)
@@ -77,7 +85,7 @@ library(readxl)
                           "habitat", "natural", "paramo", "pasture", 
                           "other", "mixed_cluster", "elev_ALOS", "subregion")]
   
-  source("D:/Doctorado/Tesis/Topographic_Col/unidades_topograficas.R")
+  source("D:/repositorio/Dung_Beetles_ColombiaBeta/3_Geographic_range/Topographic_units/unidades_topograficas.R")
   
   points_sf <- st_as_sf(j_points, coords = c("lon", "lat"), crs = 4326)
   j_points$pt_slope <- j_points$pt_region <- NA
@@ -187,21 +195,20 @@ library(readxl)
 # add available species/point combinations in range column, based on shapefiles
 # library(doParallel)
 # library(foreach)
-  library(sf)
-  library(dplyr)
 #
 # combined the 243 shapefiles
 #  
 # shapefiles_list <- list.files("D:/Doctorado/Tesis/GBIF/contorno", pattern = "*.shp", full.names = TRUE)
 # shapefiles_combined <- lapply(shapefiles_list, st_read) %>% do.call(rbind, .)
-# saveRDS(shapefiles_combined, "geographic_range.rds")
+# saveRDS(shapefiles_combined, "C:/Users/Dell-PC/Dropbox/CO_DBdata/geographic_range/geographic_range.rds")
 #
 # Obtaining the presence of sampling points within each species' geographical range:
 # if a point falls within the permitted range, it is marked with a 1 in the "combinations" column;
 # otherwise, it is assigned a 0, indicating that the point is not within the geographical range area.
+# This process may take time (~12h, Intel(R) Core(TM) i7-8550U CPU @ 1.80GHz   1.99 GHz, RAM=32.0 GB)
 #
   db5 <- readRDS("C:/Users/Dell-PC/Dropbox/CO_DBdata/abundance/db_zerofill.RDS")
-  selected_shapefiles <-  readRDS("C:/Users/Dell-PC/Documents/geographic_range.rds")
+  selected_shapefiles <- readRDS("C:/Users/Dell-PC/Dropbox/CO_DBdata/geographic_range/geographic_range.rds")
   #
   df_occurrence <- db5[,c("scientificName","point","lon", "lat")]
   df_occurrence <- st_as_sf(df_occurrence, coords = c("lon", "lat"), crs = 4326)
@@ -264,4 +271,85 @@ library(readxl)
   db5$bodysize <- as.numeric(db5$bodysize)
   db5$legratio <- as.numeric(db5$legratio)
 #  saveRDS(db5, "C:/Users/Dell-PC/Dropbox/CO_DBdata/abundance/db5_traits.RDS")  
+#
+# Obtaining the covariate "distance_to_range" calculated as the minimum distance
+# from each occurrence point to the species range polygons, with negative values
+# for points inside the range and positive values for points outside the range
+#
+  library(sf)
+  library(dplyr)
+  library(boot)
+  db5 <- readRDS("C:/Users/Dell-PC/Dropbox/CO_DBdata/abundance/db5_traits.RDS")
+  df_distance <- db5[,c("scientificName", "lon", "lat", "point")]
+  colnames(df_distance)[colnames(df_distance) == "scientificName"] <- "scientific"
+  df_distance <- st_as_sf(df_distance, coords = c("lon", "lat"), crs = 4326)
+  topographic_units <- readRDS("C:/Users/Dell-PC/Dropbox/CO_DBdata/SIG/topographic_units/topographic_units.rds")
+  topographic_units <- topographic_units[,c("region")]
+  topographic_units <- st_transform(topographic_units, st_crs(df_distance))
+  selected_shapefiles <-  readRDS("C:/Users/Dell-PC/Dropbox/CO_DBdata/geographic_range/geographic_range.rds")
+  selected_shapefiles <- st_transform(selected_shapefiles, st_crs(df_distance))
+  source("D:/repositorio/Dung_Beetles_ColombiaBeta/3_Geographic_range/mainland/mainland.R")
+#
+  # Define the AEA coordinate system
+  AEAstring <- "+proj=aea +lat_1=-4.2 +lat_2=12.5 +lat_0=4.1 +lon_0=-73 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs"
+  mainland <- st_transform(mainland, AEAstring)
+  mainland_inward <- st_buffer(mainland, -7000)  # Adjust inland buffer to exclude coastlines and international borders
+# Add distance column for each point in df_distances
+  df_distance$distance_from_range <- 0
+  species_list <- unique(df_distance$scientific)
+  # Calculate distance for each species
+  for (i in 1:length(species_list)) {
+    print(i)  # Print progress
+    species <- species_list[i]
+    # Retrieve range for the current species
+    range <- st_union(subset(selected_shapefiles, scientific == species))
+    # Select capture points for the current species
+    points <- df_distance[df_distance$scientific == species, ]
+    st_crs(points) <- st_crs("WGS84")
+    points <- st_transform(points, st_crs(range))
+    # Convert range to MULTILINESTRING and crop with inland mainland buffer
+    range_linestring <- st_cast(range, "MULTILINESTRING")
+    range_linestring <- st_transform(range_linestring, st_crs(mainland_inward))
+    range_linestring_cropped <- st_intersection(mainland_inward, range_linestring)
+    range_linestring_cropped <- st_transform(range_linestring_cropped, st_crs(points))
+    # Calculate distances
+    if (nrow(range_linestring_cropped) > 0) {
+      inside <- as.numeric(as.numeric(st_distance(points, range)) == 0)
+      distance_inside <- -1 * st_distance(points, range_linestring_cropped)
+      distance_outside <- st_distance(points, range)
+      distances <- as.numeric(inside * distance_inside + (1 - inside) * distance_outside)
+      df_distance$distance_from_range[df_distance$scientific == species] <- distances
+    } else {
+      # If no intersection, assign a specific value
+      df_distance$distance_from_range[df_distance$scientific == species] <- -2e-06
+    }
+  }
+  db5$distance_from_range <- df_distance$distance_from_range
+  # Scale the calculated distance to normalize
+  db5$distance_to_range_scaled <- db5$distance_from_range / sd(db5$distance_from_range, na.rm = TRUE)
+  
+  # Explore good functional form for distance covariate:
+  hist(db5$distance_from_range)
+  n0 <- n1 <- vector()
+  for (i in 1:40) {
+    n0[i] <- sum(db5$distance_from_range > 16000 * (i - 31) & db5$distance_from_range <= 16000 * (i - 30))
+    n1[i] <- sum(db5$distance_from_range > 16000 * (i - 31) & db5$distance_from_range <= 16000 * (i - 30))
+  }
+  range_data <- data.frame(prop_det = n1 / (n1 + n0), distance = 16000 * (-30:9) + 8000)
+  plot(prop_det ~ distance, data = range_data[range_data$distance > 0, ])
+  plot(prop_det ~ distance, data = range_data)
+  # Transform the detected proportion using logit
+  range_data$logit_prop <- boot::logit(range_data$prop_det)
+  plot(logit_prop ~ distance, data = range_data)
+  # distance scaled
+  range_data$distance_scaled <- range_data$distance / sd(df_distance$distance_from_range)
+  plot(logit_prop ~ distance_scaled, data = range_data)
+  # Transform distance using the inverse logistic function
+  range_data$dist_trans <- boot::inv.logit(range_data$distance / 30000)
+  plot(logit_prop ~ dist_trans, data = range_data)
+  # get the distance scaled
+  db5$distance_from_range_scaled2 <- boot::inv.logit(db5$distance_from_range / 30000)  
+#
+  saveRDS(db5, "C:/Users/Dell-PC/Dropbox/CO_DBdata/abundance/db5_distance.RDS") 
+#
 #
