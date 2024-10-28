@@ -145,5 +145,8 @@
     process_species(species)
   }
   
-  
-  
+# combined the 243 shapefiles
+  shapefiles_list <- list.files("D:/Doctorado/Tesis/GBIF/contorno", pattern = "*.shp", full.names = TRUE)
+  shapefiles_combined <- lapply(shapefiles_list, st_read) %>% do.call(rbind, .)
+  saveRDS(shapefiles_combined, "C:/Users/Dell-PC/Dropbox/CO_DBdata/geographic_range/geographic_range.rds")
+  #

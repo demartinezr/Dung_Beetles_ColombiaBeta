@@ -20,9 +20,10 @@ library(ggplot2)
                   (1 | cluster_species),
                   data = db5,
                   family = nbinom2,
-                  control=glmmTMBControl(optCtrl = list(maxit = 1000000)),
+                  control=glmmTMBControl(optCtrl = list(maxit = 1000000))
                   )
     # summary of adjust model
+    saveRDS(db_mod1_glmmTMB, "C:/Users/Dell-PC/Dropbox/CO_DBdata/db_mod1_glmmTMB.rds")
     summary(db_mod1_glmmTMB)
 #
 ##### brms model (J. Socolar)
