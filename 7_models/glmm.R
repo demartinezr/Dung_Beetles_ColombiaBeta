@@ -8,23 +8,27 @@ library(ggplot2)
     db5$subregion_species <- paste0(db5$subregion, "__", db5$scientificName)
     db5$cluster_species <- paste0(db5$cluster, "__", db5$scientificName)
     db5$distance_from_range_scaled2 <- as.vector(db5$distance_from_range_scaled2)
-#
+    db6 <- db5 %>%
+      group_by(across(-c(day, p_d))) %>%
+      summarise(abundance = sum(abundance, na.rm = TRUE), .groups = "drop")  
+    #
 # Generalized Linear Mixed Model (GLMM) with glmmTMB
 # protocol based on https://fhernanb.github.io/libro_modelos_mixtos/pac-glmmTMB.html
-    db_mod1_glmmTMB <- glmmTMB(
+# https://stackoverflow.com/questions/73135114/convergence-criteria-in-glmmtmb-what-are-my-options
+    db_mod2_glmmTMB <- glmmTMB(
       abundance ~ pasture + distance_from_range_scaled2 + elev_standard + elev_standard_squared +  
                   nest_guild + diet_range + activity + bodysize + legratio +  
                   (1 + pasture + elev_standard + elev_standard_squared + nest_guild + 
                   diet_range + activity + bodysize + legratio| scientificName) +
                   (1 | subregion_species) + 
                   (1 | cluster_species),
-                  data = db5,
+                  data = db6,
                   family = nbinom2,
-                  control=glmmTMBControl(optCtrl = list(maxit = 1000000))
+                  control=glmmTMBControl(optimizer=optim, optArgs=list(method="BFGS"))
                   )
     # summary of adjust model
-    saveRDS(db_mod1_glmmTMB, "C:/Users/Dell-PC/Dropbox/CO_DBdata/db_mod1_glmmTMB.rds")
-    summary(db_mod1_glmmTMB)
+    saveRDS(db_mod2_glmmTMB, "C:/Users/Dell-PC/Dropbox/CO_DBdata/db_mod2_glmmTMB.rds")
+    summary(db_mod2_glmmTMB)
 #
 ##### brms model (J. Socolar)
 library(brms)

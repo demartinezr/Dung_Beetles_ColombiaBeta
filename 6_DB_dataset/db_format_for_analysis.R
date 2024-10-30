@@ -5,7 +5,6 @@ setwd("C:/Users/Dell-PC/Dropbox/CO_DBdata/SIG/inputs")
 library(readxl)
 library(sf)
 library(dplyr)
-library(glmmTMB)
 library(ggplot2)
 #
 ############## Ingest and clean beetles data set by Jacob Socolar ##############
@@ -344,5 +343,11 @@ library(ggplot2)
   # get the distance scaled
   db5$distance_from_range_scaled2 <- boot::inv.logit(db5$distance_from_range / 30000)  
 #
-  saveRDS(db5, "C:/Users/Dell-PC/Dropbox/CO_DBdata/abundance/db5_distance.RDS") 
-#
+###################### remove the NA traps lost ################################
+    db5 <- readRDS("C:/Users/Dell-PC/Dropbox/CO_DBdata/abundance/db5_distance.RDS")
+    db5$p_d <- paste(db5$point, db5$day,  sep = "_")
+    na_point <- subset(db2, db2$abundance=="NA")
+    na_point$p_d <- paste(na_point$point, na_point$day,  sep = "_")
+    na_point_remove <- as.vector(sort(unique(na_point$p_d)))
+    db5 <- db5[!db5$p_d %in% na_point_remove, ]
+    saveRDS(db5, "C:/Users/Dell-PC/Dropbox/CO_DBdata/abundance/db5_distance.RDS") 

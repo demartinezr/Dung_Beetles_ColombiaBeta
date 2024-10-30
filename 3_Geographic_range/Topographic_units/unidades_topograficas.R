@@ -1,4 +1,4 @@
-setwd("C:/Users/Dell-PC/Dropbox/CO_DBdata/SIG/inputs")
+setwd("D:/Doctorado/Tesis/Topographic_Col/inputs")
 library(ggplot2)
 library(sf)
 library(dplyr)
