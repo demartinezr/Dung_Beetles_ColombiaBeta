@@ -2,17 +2,19 @@
 library(glmmTMB)
 library(dplyr)
 library(ggplot2)
-# dataset
+# dataset with abundance by speices/point/day -> 923315 obs
     db5 <- readRDS("C:/Users/Dell-PC/Dropbox/CO_DBdata/abundance/db5_distance.RDS")
     db5$elev_standard_squared <- db5$elev_standard^2
     db5$subregion_species <- paste0(db5$subregion, "__", db5$scientificName)
     db5$cluster_species <- paste0(db5$cluster, "__", db5$scientificName)
     db5$distance_from_range_scaled2 <- as.vector(db5$distance_from_range_scaled2)
-    db6 <- db5 %>%
+  # sum abundance day by species/point. Remove day covariate -> 241948 obs
+    db6 <- db5 %>%  
       group_by(across(-c(day, p_d))) %>%
       summarise(abundance = sum(abundance, na.rm = TRUE), .groups = "drop")  
-    #
-# Generalized Linear Mixed Model (GLMM) with glmmTMB
+  #
+# Generalized Linear Mixed Model (GLMM) with glmmTMB. Abundance by species/point
+#
 # protocol based on https://fhernanb.github.io/libro_modelos_mixtos/pac-glmmTMB.html
 # https://stackoverflow.com/questions/73135114/convergence-criteria-in-glmmtmb-what-are-my-options
     db_mod2_glmmTMB <- glmmTMB(
