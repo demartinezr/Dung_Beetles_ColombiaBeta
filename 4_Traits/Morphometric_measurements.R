@@ -1,4 +1,4 @@
-# Protocol to unify morphometric measurements of 244 species/morpho species from 
+# Protocol to unify morphometric measurements of 243 species/morpho species from 
 # all projects, new pictures from 2022
 #
 setwd("C:/Users/Dell-PC/Dropbox/CO_DBdata")
@@ -25,7 +25,7 @@ library(dplyr)
   means_new <- merge(mean_body_elytra, mean_legs, by = c("scientificName", "individual_id_number"))
 #
 # dataset 2021 morphometrics
-  data_2021 <- read_excel("./traits/morphometrics/output_allmorphmetrics_withsppnames_2024.xlsx", sheet = "output_allmorphmetrics_withsppn")
+  data_2021 <- read.csv("./traits/morphometrics/output_DB_rawdata_alltraits_combinedMASTER.csv", header =TRUE, sep =";")
 #
 # Intersect colnames between data frames
   common_cols <- intersect(names(data_2021), names(means_new))
@@ -46,6 +46,7 @@ library(dplyr)
          (morphometrics$backfemurlength+
           morphometrics$backtibialength+
           morphometrics$backspurlength))
+  write.table(morphometrics, "output_rawdata_alltraits_2024.txt")
 # traits body size and leg ratio means
   morphometrics_mean <- morphometrics %>%
     group_by(scientificName) %>%
@@ -58,7 +59,6 @@ library(dplyr)
     ) %>%
     ungroup()
   write.table(morphometrics_mean, "morphometrics_mean.txt")
-  nosp <- morphometrics_mean[!(morphometrics_mean$scientificName %in% db$scientificName), ]
 #
 # Merge morphometrics measurements and behaviour traits in Dung beetles data set
 # DB_data <- read_excel("C:./abundance/Scarabaeinae_database_2024.xlsx", sheet="Scarabaeinae_database_2024")
