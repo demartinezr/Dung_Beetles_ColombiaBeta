@@ -7,7 +7,7 @@ library(sf)
 library(dplyr)
 library(ggplot2)
 #
-############## Ingest and clean beetles data set by Jacob Socolar ##############
+############## Ingest and clean beetles data set by Jacob Socolar adapted by DEMR
 #
   # load data sets for all projects Western cordillera, llanos, Paramos, beta diversity
       db <- read_excel("C:/Users/Dell-PC/Dropbox/CO_dbdata/abundance/Scarabaeinae_database_2024.xlsx", sheet = "Scarabaeinae_database_2024")
@@ -351,3 +351,4 @@ library(ggplot2)
     na_point_remove <- as.vector(sort(unique(na_point$p_d)))
     db5 <- db5[!db5$p_d %in% na_point_remove, ]
     saveRDS(db5, "C:/Users/Dell-PC/Dropbox/CO_DBdata/abundance/db5_distance.RDS") 
+    

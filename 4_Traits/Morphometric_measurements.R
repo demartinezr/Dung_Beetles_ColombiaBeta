@@ -46,8 +46,19 @@ library(dplyr)
          (morphometrics$backfemurlength+
           morphometrics$backtibialength+
           morphometrics$backspurlength))
-  write.table(morphometrics, "output_rawdata_alltraits_2024.txt")
-# traits body size and leg ratio means
+# mean id duplicates (messurements by DEMR and Felicity)  
+  morphometrics <- morphometrics %>%
+    group_by(individual_id_number) %>%
+    summarise(
+      scientificName = first(scientificName),
+      across(c(elytrawidth, elytralength, bodylength, bodywidth,
+                       frontfemurlength, fronttibialength, backfemurlength, 
+                       backtibialength, backspurlength, bodysize, legratio), 
+                     mean, na.rm = TRUE))
+  write.table(morphometrics, "./traits/morphometrics/output_rawdata_alltraits_2024b.txt")
+  morphometrics <- read.table("./traits/morphometrics/output_rawdata_alltraits_2024.txt", header=TRUE)
+  
+  # traits body size and leg ratio means
   morphometrics_mean <- morphometrics %>%
     group_by(scientificName) %>%
     summarise(
@@ -58,7 +69,7 @@ library(dplyr)
       )
     ) %>%
     ungroup()
-  write.table(morphometrics_mean, "morphometrics_mean.txt")
+  write.table(morphometrics_mean, "./traits/morphometrics/morphometrics_mean.txt")
 #
 # Merge morphometrics measurements and behaviour traits in Dung beetles data set
 # DB_data <- read_excel("C:./abundance/Scarabaeinae_database_2024.xlsx", sheet="Scarabaeinae_database_2024")
