@@ -55,7 +55,7 @@ library(dplyr)
                        frontfemurlength, fronttibialength, backfemurlength, 
                        backtibialength, backspurlength, bodysize, legratio), 
                      mean, na.rm = TRUE))
-  write.table(morphometrics, "./traits/morphometrics/output_rawdata_alltraits_2024b.txt")
+  write.table(morphometrics, "./traits/morphometrics/output_rawdata_alltraits_2024.txt")
   morphometrics <- read.table("./traits/morphometrics/output_rawdata_alltraits_2024.txt", header=TRUE)
   
   # traits body size and leg ratio means

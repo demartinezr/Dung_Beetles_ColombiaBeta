@@ -252,7 +252,7 @@ library(ggplot2)
 ######################### add traits to dataset ###############################
     beha <- read_excel("C:/Users/Dell-PC/Dropbox/CO_DBdata/traits/behaviour/DB_Distributions_traits_2024.xlsx", sheet="DB_Distributions_traits")
     beha <- beha[c("scientificName", "nest_guild", "diet_range", "activity")]
-    morpho <- read.table("C:/Users/Dell-PC/Dropbox/CO_DBdata/traits/morphometrics/morphometrics_mean.txt")
+    morpho <- read.table("C:/Users/Dell-PC/Dropbox/CO_DBdata/traits/morphometrics/morphometrics_mean.txt", header = TRUE)
     morpho <- morpho[morpho$scientificName %in% beha$scientificName, ]
     morphobeha <- merge(beha, morpho, by = "scientificName")
     db5 <- merge(db5, morphobeha, by ="scientificName")

@@ -174,14 +174,54 @@ db_mod1 <-
       chains = 3, cores = 3, backend = 'cmdstanr',
       refresh = 10)
 
-db_mod2 <- brm(
-  abundance ~ pasture + elev_standard + elev_standard_squared +
-    nest_guild + diet_range + activity + bodysize + legratio +
-    pasture * nest_guild + pasture * diet_range + pasture * activity +
-    pasture * bodysize + pasture * legratio +
-    (1 + pasture + elev_standard + elev_standard_squared | scientificName) +
-    (1 | subregion_species) + (1 | cluster_species),
-  family = "negbinomial", data = db7,
-  chains = 3, cores = 3, backend = 'rstan',
+#saveRDS(db_mod1, "C:/Users/Dell-PC/Dropbox/CO_DBdata/db_mod1.rds")
+
+db_mod1 <-readRDS("C:/Users/Dell-PC/Dropbox/CO_DBdata/db_mod1.rds")
+summary(db_mod1)
+
+class(db7$pasture)
+db7$pasture <- as.factor(db7$pasture)
+# saveRDS(db7, "C:/Users/Dell-PC/Dropbox/CO_DBdata/abundance/db7_available.RDS")
+db_mod_abundance <-
+  brm(abundance ~
+        pasture + elev_standard + elev_standard_squared +  # biophysical
+        nest_guild + diet_range + activity + bodysize + legratio + # traits
+        pasture * nest_guild + pasture * diet_range + pasture * activity + # trait-pasture interactions
+        pasture * bodysize + pasture * legratio +
+        (1 + pasture + elev_standard + elev_standard_squared | scientificName) +
+        (1 | subregion_species) + (1 | cluster_species),
+      family = "negbinomial", data = db7,
+      chains = 3, cores = 4, backend = 'cmdstanr',
+      sample_file = "C:/Users/Dell-PC/Dropbox/CO_DBdata/db_mod_abundance.csv",
+      refresh = 10)
+
+#saveRDS(db_mod_abundance, "C:/Users/Dell-PC/Dropbox/CO_DBdata/db_mod_abundance.rds")
+db_mod_abundance <-readRDS("C:/Users/Dell-PC/Dropbox/CO_DBdata/db_mod_abundance.rds")
+
+summary(db_mod_abundance)
+
+
+library(brms)
+
+# Occupancy models with imperfect detection
+mod_occupancy <- brm(
+  #  occupancy (ψ)
+  bf(occupancy ~
+       pasture + elev_standard + elev_standard_squared +  # biophysical
+       nest_guild + diet_range + activity + bodysize + legratio + # traits
+       pasture * nest_guild + pasture * diet_range + pasture * activity + # trait-pasture interactions
+       pasture * bodysize + pasture * legratio +
+       (1 + pasture + elev_standard + elev_standard_squared | scientificName) +
+       (1 | subregion_species) + (1 | cluster_species),
+     family = bernoulli()) +  # Bernoulli para ocupación (0/1)
+    
+    # detection (p)
+    bf(detection ~ 
+         pasture + elev_standard + (1 | cluster_species),
+       family = bernoulli()),  
+  data = db7_occupancy,  
+  chains = 3, 
+  cores = 3, 
+  backend = 'cmdstanr', 
   refresh = 10
 )
