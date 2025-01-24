@@ -8,8 +8,11 @@ library(ggplot2)
 AEAstring <- "+proj=aea +lat_1=-4.2 +lat_2=12.5 +lat_0=4.1 +lon_0=-73 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs"
 
 source("D:/Doctorado/Tesis/Topographic_Col/unidades_topograficas.R")
+pacific <- st_transform(pacific, crs(raster_elev_AEA))
+tacarcuna <- st_transform(tacarcuna, crs(raster_elev_AEA))
+snsm <- st_transform(snsm, crs(raster_elev_AEA))
 
-raster_elev_AEA <- raster("D:/Capas/America/dem/wc2.1_30s_elev/col_dem.tif")
+raster_elev_AEA <- raster("D:/Capas/America/dem/elev_raster/raster_elev_AEA.grd")
 
 pac_raster <- fasterize::fasterize(pacific, raster_elev_AEA)
 pac_raster[raster_elev_AEA > 1100] <- NA

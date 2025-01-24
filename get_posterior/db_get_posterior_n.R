@@ -32,32 +32,6 @@ saveRDS(lambda_components, "C:/Users/Dell-PC/Dropbox/CO_DBdata/Analysis/posterio
 lambda <- readRDS("C:/Users/Dell-PC/Dropbox/CO_DBdata/Analysis/get_posterior/posterior_lambda.rds")
 
 ################################################################################
-get_prediction_components_abundance <- function(draws) {
-  # Efectos fijos (coeficientes)
-  fixed_effects <- draws[, grep("^b_", colnames(draws))]
-  
-  # Efectos aleatorios (desviaciones estándar y correlaciones)
-  random_effects <- draws[, grep("^sd_", colnames(draws))]
-  correlations <- draws[, grep("^cor_", colnames(draws))]
-  
-  # Interacciones (productos de coeficientes)
-  interaction_terms <- draws[, grep(":", colnames(draws))]
-  
-  # Crear la lista de componentes
-  components <- list(
-    fixed_effects = fixed_effects,
-    random_effects = random_effects,
-    correlations = correlations,
-    interaction_terms = interaction_terms
-  )
-  
-  return(components)
-}
-
-# Aplicar la función a los draws
-prediction_components <- get_prediction_components_abundance(draws)
-
-################################################################################
 library(brms)
 library(tidyr)
 library(ggplot2)
@@ -67,3 +41,61 @@ library(ggthemes)
 predicted <- posterior_predict(db_mod_abundance)
 expected <- posterior_epred(db_mod_abundance)
 linear_pred <- posterior_linpred(db_mod_abundance)
+
+################################################################################
+# Function to get the species-specific components of the abundance model (log_lambda)
+get_lambda_components <- function(draws, iter, n_info) {
+  # Get unique species
+  species <- n_info[!duplicated(n_info$scientificName),]
+  
+  # Get the expectation at "pasture = 0" (base abundance when pasture is 0)
+  log_lambda_0 <- 
+    as.numeric(draws[iter, "b_Intercept"]) +
+    as.numeric(draws[iter, paste0("r_scientificName[", species$scientificName, ",Intercept]")]) 
+  
+  # Get the effect of pasture on log_lambda (log-transformed abundance)
+  log_lambda_pasture_offset <- 
+    as.numeric(draws[iter, "b_pasture1"]) +
+    as.numeric(draws[iter, paste0("r_scientificName[", species$scientificName, ",pasture1]")])
+  
+  # Create an empty dataframe to store the results
+  result_df <- data.frame(
+    scientificName = species$scientificName,
+    log_lambda_0 = log_lambda_0,
+    log_lambda_pasture_offset = log_lambda_pasture_offset
+  )
+  
+  # Add random effects for clusters (each cluster effect should be a column per species)
+  for (species_name in species$scientificName) {
+    # Find all clusters related to this species
+    cluster_names <- unique(n_info$cluster_species[n_info$scientificName == species_name])
+    
+    for (cluster_name in cluster_names) {
+      # Extract the random effect for this species and cluster
+      cluster_effect_column <- paste0("cluster_", gsub("[^a-zA-Z0-9]", "_", cluster_name)) # Clean the name for valid column names
+      cluster_effect_value <- as.numeric(draws[iter, paste0("r_cluster_species[", cluster_name, ",Intercept]")])
+      
+      # Add the cluster effect as a new column for the current species
+      result_df[which(result_df$scientificName == species_name), cluster_effect_column] <- cluster_effect_value
+    }
+    
+    # Find all subregions related to this species
+    subregion_names <- unique(n_info$subregion_species[n_info$scientificName == species_name])
+    
+    for (subregion_name in subregion_names) {
+      # Extract the random effect for this species and subregion
+      subregion_effect_column <- paste0("subregion_", gsub("[^a-zA-Z0-9]", "_", subregion_name)) # Clean the name for valid column names
+      subregion_effect_value <- as.numeric(draws[iter, paste0("r_subregion_species[", subregion_name, ",Intercept]")])
+      
+      # Add the subregion effect as a new column for the current species
+      result_df[which(result_df$scientificName == species_name), subregion_effect_column] <- subregion_effect_value
+    }
+  }
+  
+  return(result_df)
+}
+
+lambda_components <- lapply(1:nrow(draws), function(i) get_lambda_components(draws, i, n_info))
+
+saveRDS(lambda_components, "C:/Users/Dell-PC/Dropbox/CO_DBdata/Analysis/posterior_lambda_RES.rds")
+

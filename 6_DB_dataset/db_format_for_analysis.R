@@ -217,7 +217,9 @@ library(ggplot2)
   #
     db5 <- readRDS("C:/Users/Dell-PC/Dropbox/CO_DBdata/abundance/db_zerofill.RDS")
     selected_shapefiles <- readRDS("C:/Users/Dell-PC/Dropbox/CO_DBdata/geographic_range/geographic_range.rds")
-    #
+   # check shapefiles
+    plot(selected_shapefiles[1, "geometry"], main = selected_shapefiles$scientific[1])
+     #
     df_occurrence <- db5[,c("scientificName","point","lon", "lat")]
     df_occurrence <- st_as_sf(df_occurrence, coords = c("lon", "lat"), crs = 4326)
     df_occurrence$combinations <- 0
@@ -350,5 +352,36 @@ library(ggplot2)
     na_point$p_d <- paste(na_point$point, na_point$day,  sep = "_")
     na_point_remove <- as.vector(sort(unique(na_point$p_d)))
     db5 <- db5[!db5$p_d %in% na_point_remove, ]
-    saveRDS(db5, "C:/Users/Dell-PC/Dropbox/CO_DBdata/abundance/db5_distance.RDS") 
+    saveRDS(db5, "C:/Users/Dell-PC/Dropbox/CO_DBdata/abundance/db5_distance.RDS")
+
+# dataset with abundance by speices/point/day -> 923315 obs, 958 points, 243 species
+    db5 <- readRDS("C:/Users/Dell-PC/Dropbox/CO_DBdata/abundance/db5_distance.RDS")
+    db5$elev_standard_squared <- db5$elev_standard^2
+    db5$subregion_species <- paste0(db5$subregion, "__", db5$scientificName)
+    db5$cluster_species <- paste0(db5$cluster, "__", db5$scientificName)
+    db5$distance_from_range_scaled2 <- as.vector(db5$distance_from_range_scaled2)
+# sum abundance day by species/point. Remove day covariate -> 241948 obs, 958 points, 243 species
+    db6 <- db5 %>%  
+      group_by(across(-c(day, p_d))) %>%
+      summarise(abundance = sum(abundance, na.rm = TRUE), .groups = "drop")  
+# remove palm and young forest 219452 obs, 870 points, 243 species
+    db6 <- db6[db6$habitat !="Sy",]
+    db6 <- db6[db6$habitat !="PALM",]
+# Remove the improbable combinations for point and species range, 865 points, 243 species
+    db7 <- db6 |>
+      filter(combinations ==1)
+    class(db7$pasture)
+    db7$pasture <- as.factor(db7$pasture)
+    # saveRDS(db7, "C:/Users/Dell-PC/Dropbox/CO_DBdata/abundance/db7_combined.RDS")
+    db_mod_abundance <-
+      brm(abundance ~
+            pasture + elev_standard + elev_standard_squared +  # biophysical
+            nest_guild + diet_range + activity + bodysize + legratio + # traits
+            pasture * nest_guild + pasture * diet_range + pasture * activity + # trait-pasture interactions
+            pasture * bodysize + pasture * legratio +
+            (1 + pasture + elev_standard + elev_standard_squared | scientificName) +
+            (1 | subregion_species) + (1 | cluster_species),
+          family = "negbinomial", data = db7,
+          chains = 3, cores = 4, backend = 'cmdstanr',
+          refresh = 10)
     

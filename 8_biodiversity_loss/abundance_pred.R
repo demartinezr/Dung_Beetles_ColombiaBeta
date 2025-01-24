@@ -71,5 +71,7 @@ for (i in 1:nrow(grid_2km)) {
   forest_pred[[i]] <- cell_forest_pred
   pasture_pred[[i]] <- cell_pasture_pred
 }
+saveRDS(forest_pred, "C:/Users/Dell-PC/Dropbox/CO_DBdata/Analysis/predictions/forest_pred.rds")
+saveRDS(pasture_pred, "C:/Users/Dell-PC/Dropbox/CO_DBdata/Analysis/predictions/pasture_pred.rds")
 
 ################################################################################
