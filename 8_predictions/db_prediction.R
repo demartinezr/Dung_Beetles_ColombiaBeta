@@ -2,8 +2,8 @@ library(sf)
 library(rgee)
 library(dplyr)
 library(brms)
-library(posteror)
-setwd("/Users/jacob/Downloads/data")
+library(posterior)
+setwd("C:/Users/Dell-PC/Dropbox/CO_DBdata")
 
 ##### extract elevations on a 2 km grid over mainland colombia #####
 `%ni%` <- Negate(`%in%`)
@@ -67,7 +67,7 @@ scale_elev <- function(e, l, u) {
   2 * (e - l) / (u - l) - 1
 }
 
-db_traits <- readRDS("db5_traits.RDS") |>
+db_traits <- readRDS("/CO_DBdata/abundancedb5_traits.RDS") |>
   filter(!duplicated(scientificName)) |>
   select(scientificName, sp_elev_lower2, sp_elev_upper2, sp_region_amazon,
          sp_region_llanos, sp_region_caribbean, sp_region_snsm, sp_region_andes,
@@ -93,7 +93,7 @@ prediction_data <- rbind(pd_pasture, pd_forest) |>
 saveRDS(prediction_data, "prediction_data.RDS")
 
 ##### do prediction #####
-mod <- readRDS("/Users/jacob/Downloads/db_mod_abundance.RDS")
+mod <- readRDS("C:/Users/Dell-PC/Dropbox/CO_DBdata/db_mod_abundance.rds")
 mod_draws <- as_draws_df(mod)
 
 species_preds <- cluster_sds <- phis <- list()
