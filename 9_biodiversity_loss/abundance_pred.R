@@ -26,6 +26,10 @@ lambda_exp <- lapply(lambda, function(df) {
 # grid_sf <- st_sf(geometry = grid_clipped)
 # grid_sf <- st_join(study_grid, study_area["OBJECTID"], join = st_intersects)
 # st_write(grid_sf, "D:/Capas/America/grid/grid_2km_ID.shp")
+# grid_2km <- st_set_crs(grid_2km, AEAstring)
+# grid_2km <- st_transform(grid_2km, crs = 4326)
+# st_write(grid_2km, "D:/Capas/America/grid/grid_2km_ID_WGS84.shp")
+
 grid_2km <- st_read("D:/Capas/America/grid/grid_2km_ID.shp")
 grid_2km$unique_id <- seq_len(nrow(grid_2km))
 species <- lambda[[1]]$scientificName
