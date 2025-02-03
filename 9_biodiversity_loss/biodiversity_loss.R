@@ -4,28 +4,29 @@ library(sf)
 library(dplyr)
 library(ggplot2)
 
-# abundance predictions for 243 species of dung beetles with 10 iterations in 
+# Abundance predictions for 243 species of dung beetles with 10 iterations in 
 # pasture and forest
 db_predictions <- readRDS("C:/Users/Dell-PC/Dropbox/CO_DBdata/species_predictions.rds")
-# study area ecoregions and grid
+
+# Study area ecoregions and grid
 study_area <- st_read("D:/Capas/America/ecoregions/ecoreg.shp")
 study_area <- st_make_valid(study_area)
-#
-# Crear una lista para almacenar los sf dataframes por ecorregión
-ec_puntos <- vector("list", length = nrow(study_area))
-names(ec_puntos) <- study_area$ECO_NAME  # Usamos los nombres de las ecorregiones
-# Iterar sobre cada ecorregión
-for (i in seq_len(nrow(study_area))) {
-  poligono <- study_area[i, ]  # Extraer el polígono de la ecorregión
-  # Filtrar los puntos de todas las especies que caen dentro de la ecorregión
-  puntos_en_ecorregion <- do.call(rbind, lapply(db_predictions, function(df) {
-    st_filter(df, poligono)
-  }))
-  # Guardar el resultado en la lista
-  ec_puntos[[i]] <- puntos_en_ecorregion
-}
 
-saveRDS(ec_puntos, "./Analysis/mean_abundance/ecoregions_predictions.rds")
+# Create a list to store sf dataframes by ecoregion
+ec_points <- vector("list", length = nrow(study_area))
+names(ec_points) <- study_area$ECO_NAME  # Use ecoregion names
+
+# Iterate over each ecoregion
+for (i in seq_len(nrow(study_area))) {
+  polygon <- study_area[i, ]
+  # Filter points of all species that fall within the ecoregion
+  points_in_ecoregion <- do.call(rbind, lapply(db_predictions, function(df) {
+    st_filter(df, polygon)
+  }))
+  # Store the result in the list
+  ec_points[[i]] <- points_in_ecoregion
+}
+saveRDS(ec_points, "./Analysis/mean_abundance/ecoregions_predictions.rds")
 gc()
 ################################
 #
@@ -37,7 +38,7 @@ cauca_montane <- eco_predictions[["Cauca Valley montane forests"]]
 EC_montane <- eco_predictions[["Eastern Cordillera Real montane forests"]]
 villavicencio_dry <- eco_predictions[["Apure-Villavicencio dry forests"]]
 
-# function to calculate the multiplicative change of anbundance by species in 
+# function to calculate the multiplicative change of abundance by species in 
 # 10 posterior iterations
 
 calcular_cambio_multiplicativo <- function(df) {
@@ -64,7 +65,7 @@ cauca_montane_resultado <- calcular_cambio_multiplicativo(cauca_montane)
 EC_montane_resultado <- calcular_cambio_multiplicativo(EC_montane)
 villavicencio_dry_resultado <- calcular_cambio_multiplicativo(villavicencio_dry)
 
-datos_ecoregiones1 <- bind_rows(
+datos_ecoregiones <- bind_rows(
   mutate(sta_marta_resultado, ecorregion = "Santa Marta montane forests"),
   mutate(magdalena_dry_resultado, ecorregion = "Magdalena Valley dry forests"),
   mutate(cauca_montane_resultado, ecorregion = "Cauca Valley montane forests"),
@@ -73,7 +74,7 @@ datos_ecoregiones1 <- bind_rows(
   )
 
 library(tidyr)
-datos_ecoregiones_limpios1 <- datos_ecoregiones1 %>%
+datos_ecoregiones_limpios <- datos_ecoregiones %>%
   mutate(across(starts_with("ratio__draw"), ~ ifelse(is.finite(.), ., NA))) %>% 
   drop_na()
 
@@ -143,3 +144,39 @@ grid_polygons <- st_make_grid(colombia_utm, cellsize = c(20000, 20000), what = "
 grid_centroids <- st_centroid(grid_polygons)
 plot(colombia_utm$geometry)
 plot(grid_centroids, pch=20, col="blue", add=TRUE, cex=0.5)
+
+###############################################################################
+ecoregions_predictions <- readRDS("./Analysis/mean_abundance/ecoregions_predictions.rds")
+
+multiplicative_change <- function(df) {
+  forest <- df %>% filter(pasture == 1)
+  pasture <- df %>% filter(pasture == 0)
+  
+  abundance_ratio <- forest %>%
+    select(starts_with("abun__draw_")) / pasture %>%
+    select(starts_with("abun__draw_"))
+  
+  colnames(abundance_ratio) <- gsub("abun__draw_", "ratio__draw_", colnames(abundance_ratio))
+  
+  result_df <- forest %>%
+    select(scientificName) %>%
+    bind_cols(abundance_ratio)
+  return(result_df)
+}
+
+ratio_draw <- future_lapply(ecoregions_predictions, multiplicative_change, future.packages = c("dplyr", "sf"), future.seed = TRUE)
+saveRDS(ratio_draw, "./ratio_draw_ecoregions.rds")
+
+ratio_draw <- readRDS("./ratio_draw_ecoregions.rds")
+mean_ratio <- function(df) {
+  df %>%
+    summarise(across(starts_with("ratio__draw_"), 
+                     list(mean = ~mean(.x[is.finite(.x)], na.rm = TRUE),
+                          p25  = ~quantile(.x[is.finite(.x)], probs = 0.25, na.rm = TRUE),
+                          p50  = ~quantile(.x[is.finite(.x)], probs = 0.50, na.rm = TRUE),
+                          p75  = ~quantile(.x[is.finite(.x)], probs = 0.75, na.rm = TRUE)))) %>% 
+    mutate(ecoregion = df$ecorregion[1])
+}
+
+mean_ratio_draw <- bind_rows(lapply(ratio_draw, mean_ratio))
+
