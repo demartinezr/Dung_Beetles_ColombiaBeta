@@ -67,10 +67,10 @@ villavicencio_dry_resultado <- calcular_cambio_multiplicativo(villavicencio_dry)
 
 datos_ecoregiones <- bind_rows(
   mutate(sta_marta_resultado, ecorregion = "Santa Marta montane forests"),
-  mutate(magdalena_dry_resultado, ecorregion = "Magdalena Valley dry forests"),
-  mutate(cauca_montane_resultado, ecorregion = "Cauca Valley montane forests"),
-  mutate(EC_montane_resultado, ecorregion = "Eastern Cordillera montane forests"),
-  mutate(villavicencio_dry_resultado, ecorregion = "Villavicencio dry forests")
+  mutate(magdalena_dry_resultado, ecorregion = "Magdalena Valley dry forests")#,
+#  mutate(cauca_montane_resultado, ecorregion = "Cauca Valley montane forests"),
+#  mutate(EC_montane_resultado, ecorregion = "Eastern Cordillera montane forests"),
+#  mutate(villavicencio_dry_resultado, ecorregion = "Villavicencio dry forests")
   )
 
 library(tidyr)
@@ -78,7 +78,7 @@ datos_ecoregiones_limpios <- datos_ecoregiones %>%
   mutate(across(starts_with("ratio__draw"), ~ ifelse(is.finite(.), ., NA))) %>% 
   drop_na()
 
-estadisticas1 <- datos_ecoregiones_limpios1 %>%
+estadisticas <- datos_ecoregiones_limpios %>%
   pivot_longer(cols = starts_with("ratio__draw"),  # Convertir las columnas ratio__draw en formato largo
                names_to = "ratio", values_to = "valor") %>%
   group_by(ecorregion, ratio) %>%
@@ -137,14 +137,6 @@ ggplot(estadisticas1, aes(y = p75, x = reorder(ecorregion, -p75), fill = ecorreg
   theme_classic() +
   theme(legend.position = "none")
 
-
-col <- st_read("D:/Capas/Colombia/Colombia/COL_adm0.shp")
-colombia_utm <- st_transform(col, crs = 32718)
-grid_polygons <- st_make_grid(colombia_utm, cellsize = c(20000, 20000), what = "polygons")
-grid_centroids <- st_centroid(grid_polygons)
-plot(colombia_utm$geometry)
-plot(grid_centroids, pch=20, col="blue", add=TRUE, cex=0.5)
-
 ###############################################################################
 ecoregions_predictions <- readRDS("./Analysis/mean_abundance/ecoregions_predictions.rds")
 
@@ -168,15 +160,169 @@ ratio_draw <- future_lapply(ecoregions_predictions, multiplicative_change, futur
 saveRDS(ratio_draw, "./ratio_draw_ecoregions.rds")
 
 ratio_draw <- readRDS("./ratio_draw_ecoregions.rds")
-mean_ratio <- function(df) {
+
+mean_ratio <- function(df, df_name) {
   df %>%
     summarise(across(starts_with("ratio__draw_"), 
                      list(mean = ~mean(.x[is.finite(.x)], na.rm = TRUE),
                           p25  = ~quantile(.x[is.finite(.x)], probs = 0.25, na.rm = TRUE),
                           p50  = ~quantile(.x[is.finite(.x)], probs = 0.50, na.rm = TRUE),
                           p75  = ~quantile(.x[is.finite(.x)], probs = 0.75, na.rm = TRUE)))) %>% 
-    mutate(ecoregion = df$ecorregion[1])
+    pivot_longer(cols = starts_with("ratio__draw_"),
+                 names_to = c("ratio", ".value"),
+                 names_pattern = "ratio__(draw_\\d+)_(.*)") %>%
+    mutate(ecoregion = df_name)
+}
+mean_ratio_draw <- bind_rows(mapply(mean_ratio, ratio_draw, names(ratio_draw), SIMPLIFY = FALSE))
+
+library(ggridges)
+plot_p25 <- ggplot(mean_ratio_draw, aes(x = p25, y = reorder(ecoregion, p25), fill = ecoregion)) +
+  geom_density_ridges2(alpha = 0.7) +  
+  labs(title = "25th percentile of the multiplicative abundance change across species",
+       x = "sensitivity (N forest/N pasture)",
+       y = "Ecoregion") +
+  theme_classic() +
+  theme(legend.position = "none") +
+  scale_x_continuous(limits = c(0, 8)) +
+  stat_density(geom = "line", position = "identity", aes(x = p25), adjust = 1, kernel = "gaussian")
+
+plot_mean <- ggplot(mean_ratio_draw, aes(x = mean, y = reorder(ecoregion, mean), fill = ecoregion)) +
+  geom_density_ridges(alpha = 0.6, scale = 1.5) +  
+  labs(title = "Mean of the multiplicative abundance change across species",
+       x = "sensitivity (N forest/N pasture)",
+       y = "Ecoregion") +
+  theme_classic() +
+  theme(legend.position = "none") +
+  scale_x_continuous(limits = c(0, 8)) +
+  stat_density(geom = "line", position = "identity", aes(x = mean), adjust = 1, kernel = "gaussian")
+
+plot_p50 <- ggplot(mean_ratio_draw, aes(x = p50, y = reorder(ecoregion, p50), fill = ecoregion)) +
+  geom_density_ridges(alpha = 0.6, scale = 1.5) +  
+  labs(title = "Median of the multiplicative abundance change across species",
+       x = "sensitivity (N forest/N pasture)",
+       y = "Ecoregion") +
+  theme_classic() +
+  theme(legend.position = "none") +
+  scale_x_continuous(limits = c(0, 8)) +
+  stat_density(geom = "line", position = "identity", aes(x = p50), adjust = 1, kernel = "gaussian")
+
+plot_p75 <- ggplot(mean_ratio_draw, aes(x = p75, y = reorder(ecoregion, p75), fill = ecoregion)) +
+  geom_density_ridges2(alpha = 0.6) +  
+  labs(title = "75th percentile of the multiplicative abundance change across species",
+       x = "sensitivity (N forest/N pasture)",
+       y = "Ecoregion") +
+  theme_classic() +
+  theme(legend.position = "none") +
+  scale_x_continuous(limits = c(0, 8)) +
+  stat_density(geom = "line", position = "identity", aes(x = p75), kernel = "gaussian")
+
+library(gridExtra)
+
+grid.arrange(plot_p25, plot_p50, plot_p75,  ncol=1)
+
+#############################################
+ecoregions_predictions <- readRDS("./Analysis/mean_abundance/ecoregions_predictions.rds")
+#draft <- ecoregions_predictions[c(8, 11, 13)]
+library(dplyr)
+library(purrr)
+library(ggplot2)
+library(tidyr)
+library(sf)
+
+# Get the region names from the list names
+region_names <- gsub(" forests", "", names(ecoregions_predictions))
+
+# Function to calculate the proportional change in abundance by species and region
+abundance_change <- function(sf_df, region_name) {
+  sf_df %>%
+    st_drop_geometry() %>% 
+    # Divide into forest (pasture = 1) and grassland (pasture = 0)
+    group_by(scientificName, pasture) %>%
+    summarise(across(starts_with("abun__draw_"), \(x) sum(x, na.rm = TRUE)), .groups = "drop") %>%
+    pivot_wider(names_from = pasture, values_from = starts_with("abun__draw_"), 
+                names_glue = "{.value}_pasture{pasture}") %>%
+    mutate(across(ends_with("_pasture1"), 
+                  ~ .x / get(sub("_pasture1", "_pasture0", cur_column())), 
+                  .names = "ratio_{.col}")) %>%
+    select(scientificName, starts_with("ratio_")) %>%
+    mutate(region = region_name)
 }
 
-mean_ratio_draw <- bind_rows(lapply(ratio_draw, mean_ratio))
+# Apply the function to each element of the list
+ratio_draw <- map2(ecoregions_predictions, region_names, abundance_change)
+
+ratio_names <- gsub(" forests", "", names(ratio_draw))
+
+mean_ratio <- function(df, df_name) {
+  df %>%
+    summarise(across(starts_with("ratio_abun__draw_"), 
+                     list(mean = ~mean(.x[is.finite(.x)], na.rm = TRUE),
+                          p25  = ~quantile(.x[is.finite(.x)], probs = 0.25, na.rm = TRUE),
+                          p50  = ~quantile(.x[is.finite(.x)], probs = 0.50, na.rm = TRUE),
+                          p75  = ~quantile(.x[is.finite(.x)], probs = 0.75, na.rm = TRUE)))) %>% 
+    pivot_longer(cols = starts_with("ratio_abun__draw_"),
+                 names_to = c("draw", ".value"),
+                 names_pattern = "ratio_abun__draw_(\\d+)_(.*)") %>%
+    mutate(ecoregion = df_name)
+}
+mean_ratio_draw <- bind_rows(mapply(mean_ratio, ratio_draw, names(ratio_draw), SIMPLIFY = FALSE))
+mean_ratio_draw$ecoregion <- gsub(" forests", "", mean_ratio_draw$ecoregion)
+
+library(ggridges)
+plot_p25 <- ggplot(mean_ratio_draw, aes(x = pasture1_p25, y = reorder(ecoregion, -pasture1_p25), fill = ecoregion)) +
+  geom_density_ridges(alpha = 0.7) +  
+  labs(title = "25th percentile",
+       x = "sensitivity (N forest/N pasture)",
+       y = "Ecoregion") +
+  theme_classic() +
+  theme(legend.position = "none",
+        axis.text.x = element_text(size=10),
+        axis.text.y = element_text(size=6)) +
+  scale_x_continuous(limits = c(0, 8)) +
+  stat_density(geom = "line", position = "identity", aes(x = pasture1_p25), adjust = 1, kernel = "gaussian")
+
+plot_mean <- ggplot(mean_ratio_draw, aes(x = pasture1_mean, y = reorder(ecoregion, -pasture1_mean), fill = ecoregion)) +
+  geom_density_ridges(alpha = 0.6, scale = 1.5) +  
+  labs(title = "Mean of the multiplicative abundance change across species",
+       x = "sensitivity (N forest/N pasture)",
+       y = "Ecoregion") +
+  theme_classic() +
+  theme(legend.position = "none") +
+  scale_x_continuous(limits = c(0, 8)) +
+  stat_density(geom = "line", position = "identity", aes(x = pasture1_mean), adjust = 1, kernel = "gaussian")
+
+plot_p50 <- ggplot(mean_ratio_draw, aes(x = pasture1_p50, y = reorder(ecoregion, -pasture1_p50), fill = ecoregion)) +
+  geom_density_ridges(alpha = 0.6, scale = 1.5) +  
+  labs(title = "Median",
+       x = "sensitivity (N forest/N pasture)",
+       y = "Ecoregion") +
+  theme_classic() +
+  theme(legend.position = "none",
+        axis.text.x = element_text(size=10),
+        axis.text.y = element_text(size=6)) +
+  scale_x_continuous(limits = c(0, 8)) +
+  stat_density(geom = "line", position = "identity", aes(x = pasture1_p50), adjust = 1, kernel = "gaussian")
+
+plot_p75 <- ggplot(mean_ratio_draw, aes(x = pasture1_p75, y = reorder(ecoregion, -pasture1_p75), fill = ecoregion)) +
+  geom_density_ridges(alpha = 0.6) +  
+  labs(title = "75th percentile",
+       x = "sensitivity (N forest/N pasture)",
+       y = "Ecoregion") +
+  theme_classic() +
+  theme(legend.position = "none",
+        axis.text.x = element_text(size=10),
+        axis.text.y = element_text(size=6)) +
+  scale_x_continuous(limits = c(0, 8)) +
+  stat_density(geom = "line", position = "identity", aes(x = pasture1_p75), kernel = "gaussian")
+
+#library(gridExtra)
+
+grid.arrange(plot_p25, plot_p50, plot_p75,  ncol=1)
+
+marta <- ecoregions_predictions[[13]]
+marta_forest <- subset(marta, marta$pasture==1)  
+marta_pasture <- subset(marta, marta$pasture==0)  
+
+sum(marta_forest$abun__draw_300[marta_forest$scientificName == "Canthidium_sp._01H"], na.rm = TRUE) /
+  sum(marta_pasture$abun__draw_300[marta_pasture$scientificName == "Canthidium_sp._01H"], na.rm = TRUE)
 

@@ -90,14 +90,15 @@ pd_forest <- pd |>
 prediction_data <- rbind(pd_pasture, pd_forest) |>
   mutate(subregion_species = paste0(subregion, "__", scientificName))
 
-saveRDS(prediction_data, "prediction_data.RDS")
+saveRDS(prediction_data, "./prediction_data.RDS")
+prediction_data <- readRDS("prediction_data.rds")
 
 ##### do prediction #####
-mod <- readRDS("C:/Users/Dell-PC/Dropbox/CO_DBdata/db_mod_abundance.rds")
+mod <- readRDS("./db_mod_abundance.rds")
 mod_draws <- as_draws_df(mod)
 
 species_preds <- cluster_sds <- phis <- list()
-draw_ids <- 300 * c(1:10)
+draw_ids <- 50 * c(1:60)
 for(i in 1:nrow(db_traits)){
   print(i)
   species_preds[[i]] <- posterior_linpred(
@@ -141,4 +142,4 @@ for(i in 1:nrow(db_traits)){
 
 names(species_predictions) <- db_traits$scientificName
 
-saveRDS(species_predictions, "species_predictions.RDS")
+saveRDS(species_predictions, "species_predictions_60draws.RDS")

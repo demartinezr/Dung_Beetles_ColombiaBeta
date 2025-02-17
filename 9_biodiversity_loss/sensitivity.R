@@ -1,7 +1,5 @@
 library(sf)
 library(dplyr)
-library(future)
-library(future.apply)
 library(tidyr)
 library(ggplot2)
 
@@ -10,7 +8,6 @@ setwd("C:/Users/Dell-PC/Dropbox/CO_DBdata")
 db_predictions <- readRDS("C:/Users/Dell-PC/Dropbox/CO_DBdata/species_predictions.rds")
 ################################################################################
 ## get multiplicative change of abudance by draw for each species
-plan(multicore, workers = 4)
 calculate_multiplicative_change <- function(df) {
   forest <- df %>% filter(pasture == 1)
   pasture <- df %>% filter(pasture == 0)
@@ -24,10 +21,11 @@ calculate_multiplicative_change <- function(df) {
   result_df <- forest %>%
     select(scientificName) %>%
     bind_cols(abundance_ratio)
+  
   return(result_df)
 }
+ratio_draw <- lapply(db_predictions, calculate_multiplicative_change)
 
-ratio_draw <- future_lapply(db_predictions, calculate_multiplicative_change, future.packages = c("dplyr", "sf"), future.seed = TRUE)
 saveRDS(ratio_draw, "./ratio_draw.rds")
 #
 ###############################################################################
@@ -130,9 +128,7 @@ write.csv(sensitivity_col, "./sensitivity_col_row.csv")
 db_predictions <- readRDS("C:/Users/Dell-PC/Dropbox/CO_DBdata/species_predictions.rds")
 
 # median and mean ratio for each species based on 10 iterations
-plan(multicore, workers = 4)
-
-db_sensitivity <- future_lapply(db_predictions, function(df) {
+db_sensitivity <- lapply(db_predictions, function(df) {
   df %>%
     rowwise() %>%
     mutate(
@@ -140,11 +136,8 @@ db_sensitivity <- future_lapply(db_predictions, function(df) {
       mean_abundance = mean(c_across(starts_with("abun__draw_")), na.rm = TRUE)
     ) %>%
     ungroup() %>%
-    select(scientificName, pasture, median_abundance, mean_abundance, geometry)  #
-}, future.packages = c("dplyr", "sf"), future.seed = TRUE)
-
-rm(db_predictions)
-gc()
+    select(scientificName, pasture, median_abundance, mean_abundance, geometry)  
+})
 saveRDS(db_sensitivity, "./sp_sensitivity.rds")
 
 # get mean and median multiplicative change of abundance for each species 
@@ -195,3 +188,53 @@ ggplot(sensitivity_col, aes(x = log10(ratio_col_mean))) +
   ) +
   theme_classic()
 write.csv(sensitivity_col, "./sensitivity_col.csv")
+
+###########################################################################
+db_predictions <- readRDS("C:/Users/Dell-PC/Dropbox/CO_DBdata/species_predictions.rds")
+
+# Get the region names from the list names
+sp_names <- names(db_predictions)
+
+# Function to calculate the proportional change in abundance by species and region
+abundance_change <- function(sf_df, sp_name) {
+  sf_df %>%
+    st_drop_geometry() %>% 
+    # Divide into forest (pasture = 1) and grassland (pasture = 0)
+    group_by(pasture) %>%
+    summarise(across(starts_with("abun__draw_"), \(x) sum(x, na.rm = TRUE)), .groups = "drop") %>%
+    pivot_wider(names_from = pasture, values_from = starts_with("abun__draw_"), 
+                names_glue = "{.value}_pasture{pasture}") %>%
+    mutate(across(ends_with("_pasture1"), 
+                  ~ .x / get(sub("_pasture1", "_pasture0", cur_column())), 
+                  .names = "ratio_{.col}")) %>%
+    select(starts_with("ratio_")) %>%
+    mutate(scientificName = sp_name)
+}
+
+# Apply the function to each element of the list
+ratio_draw <- map2(db_predictions, sp_names, abundance_change)
+
+mean_ratio <- function(df, df_name) {
+  df %>%
+    rowwise() %>% 
+    mutate(
+      mean_ratio = mean(c_across(starts_with("ratio_abun__draw_"))[is.finite(c_across(starts_with("ratio_abun__draw_")))], na.rm = TRUE),
+      median_ratio = median(c_across(starts_with("ratio_abun__draw_"))[is.finite(c_across(starts_with("ratio_abun__draw_")))], na.rm = TRUE)
+    ) %>%
+    ungroup() %>%
+    select(scientificName, mean_ratio, median_ratio) %>%
+    mutate(scientificName = df_name)
+}
+mean_ratio_draw <- bind_rows(mapply(mean_ratio, ratio_draw, names(ratio_draw), SIMPLIFY = FALSE))
+mean_ratio_draw1 <- mean_ratio_draw %>%
+  filter(!scientificName %in% c("Sulcophanaeus_leander", "Coprophanaeus_edmondsi", "Deltochilum_orbiculare"))
+
+ggplot(mean_ratio_draw1, aes(x = log10(mean_ratio))) +
+  geom_histogram(binwidth = 0.1, fill = "grey90", color = "black", alpha = 0.7) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "black", size = 1) +  # Línea en x = 1
+  labs(
+    x = "sensitivity",
+    y = "Frecuency",
+    title = "The distribution of species-specific sensitivities to forest conversion"
+  ) +
+  theme_classic()
