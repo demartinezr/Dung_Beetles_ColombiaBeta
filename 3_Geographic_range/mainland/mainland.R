@@ -1,6 +1,6 @@
 library(sf)
 # read in GADM colombia shapefile
-colombia <- st_read("D:/Capas/Colombia/Colombia/COL_adm0.shp")
+colombia <- st_read("F:/Capas/Colombia/Colombia/COL_adm0.shp")
 
 # File consists of many disjoint polygons, representing the mainland and numerous islands. Figure out which is the mainland
 # and extract it.
@@ -10,6 +10,6 @@ for(i in 1:npoly){
   size[i] <- dim(colombia$geometry[[1]][[i]][[1]])[1]
 }
 
-mainland <- colombia$geometry[[1]][[which(size == max(size))]] %>%
+divisions <- colombia$geometry[[1]][[which(size == max(size))]] %>%
   st_polygon() %>% st_sfc() %>% st_sf()
-st_crs(mainland) <- st_crs(colombia)
+st_crs(divisions) <- st_crs(divisions)

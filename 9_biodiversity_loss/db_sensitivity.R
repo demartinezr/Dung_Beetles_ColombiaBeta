@@ -4,32 +4,11 @@ library(tidyr)
 library(purrr)
 library(ggplot2)
 
-setwd("C:/Users/Dell-PC/Dropbox/CO_DBdata")
+setwd("C:/Users/PC/Dropbox/CO_DBdata")
 
 db_predictions <- readRDS("./species_predictions.rds")
 db_predictions_2 <- readRDS("./species_predictions_2.rds")
-draff1 <- db_predictions[c(4, 10, 15)]
-draff2 <- db_predictions_2[c(4, 10, 15)]
 
-# merge db_predictions
-join_sf <- function(draff1, draff2) {
-  on.exit(gc(), add = TRUE)
-  # filter predictions
-  cols_sf1 <- c("scientificName", "pasture", grep("^abun__draw_", colnames(draff1), value = TRUE), "geometry")
-  cols_sf2 <- c("scientificName", "pasture", grep("^abun__draw_", colnames(draff2), value = TRUE), "geometry")
-  
-  sf1 <- db_predictions %>% select(all_of(cols_sf1))
-  sf2 <- db_predictions_2 %>% select(all_of(cols_sf2))
-  sf1_df <- sf1 %>% st_drop_geometry()
-  sf2_df <- sf2 %>% st_drop_geometry()
-  
-  df_joined <- full_join(sf1_df, sf2_df, by = c("scientificName", "geometry", "pasture"))
-  sf_joined <- st_as_sf(df_joined, coords = c("geometry"), crs = st_crs(db_predictions))
-  return(sf_joined)
-  }
-
-# Aplicar la función a cada par de especies en las listas con purrr::map2()
-db_predictions_merge <- map2(draff1, draff2, join_sf)
 
 ############# Analysis of species specific sensitivities #####################
 
@@ -39,7 +18,7 @@ sp_names <- names(db_predictions)
 abundance_change <- function(sf_df, sp_name) {
   sf_df %>%
     st_drop_geometry() %>% 
-    # Divide into forest (pasture = 1) and grassland (pasture = 0)
+    # Divide into forest (pasture = 1) and pasture (pasture = 0)
     group_by(pasture) %>%
     summarise(across(starts_with("abun__draw_"), \(x) sum(x, na.rm = TRUE)), .groups = "drop") %>%
     pivot_wider(names_from = pasture, values_from = starts_with("abun__draw_"), 
@@ -69,11 +48,11 @@ mean_ratio <- function(df, df_name) {
 mean_ratio_draw <- bind_rows(mapply(mean_ratio, ratio_draw, names(ratio_draw), SIMPLIFY = FALSE))
 
 # remove ratios
-mean_ratio_draw1 <- mean_ratio_draw %>%
+mean_ratio_draw <- mean_ratio_draw %>%
   filter(!scientificName %in% c("Sulcophanaeus_leander", "Coprophanaeus_edmondsi", "Deltochilum_orbiculare"))
 
 # plot for the distribution of the mean abundance change across species 
-ggplot(mean_ratio_draw, aes(x = log10(median_ratio))) +
+ggplot(mean_ratio_draw, aes(x = log10(mean_ratio))) +
   geom_histogram(binwidth = 0.1, fill = "grey90", color = "black", alpha = 0.7) +
   geom_vline(xintercept = 0, linetype = "dashed", color = "black", linewidth = 1) +  # Línea en x = 1
   labs(
@@ -84,7 +63,7 @@ ggplot(mean_ratio_draw, aes(x = log10(median_ratio))) +
   theme_classic()
 
 ################# Analysis of sensitivities for ecoregions ####################
-setwd("C:/Users/Dell-PC/Dropbox/CO_DBdata")
+setwd("C:/Users/PC/Dropbox/CO_DBdata")
 library(sf)
 library(dplyr)
 library(tidyr)
@@ -95,7 +74,7 @@ library(gridExtra)
 
 # Abundance predictions for 243 species of dung beetles with 10 iterations in 
 # pasture and forest
-db_predictions <- readRDS("./species_predictions_2.rds")
+db_predictions <- readRDS("./species_predictions.rds")
 
 # Study area ecoregions
 study_area <- st_read("D:/Capas/America/ecoregions/ecoreg.shp")
@@ -118,7 +97,7 @@ for (i in seq_len(nrow(study_area))) {
 saveRDS(ec_points, "./Analysis/mean_abundance/ecoregions_predictions_2.rds")
 
 # ecoregions analysis
-ecoregions_predictions <- readRDS("./Analysis/mean_abundance/ecoregions_predictions_2.rds")
+ecoregions_predictions <- readRDS("./Analysis/mean_abundance/ecoregions_predictions.rds")
 
 # Get the region names from the list names
 region_names <- gsub(" forests", "", names(ecoregions_predictions))
@@ -155,12 +134,12 @@ mean_ratio <- function(df, df_name) {
     mutate(ecoregion = df_name)
 }
 mean_ratio_draw <- bind_rows(mapply(mean_ratio, ratio_draw, names(ratio_draw), SIMPLIFY = FALSE))
-mean_ratio_col <- readRDS("./mean_ratio_col_2.rds")
+mean_ratio_col <- readRDS("./mean_ratio_col.rds")
 mean_ratio_draw$ecoregion <- gsub(" forests", "", mean_ratio_draw$ecoregion)
 mean_ratio_draw <- bind_rows(mean_ratio_draw, mean_ratio_col)
 
-plot_p25 <- ggplot(mean_ratio_draw, aes(x = pasture1_p25, y = reorder(ecoregion, -pasture1_p25)), fill = ecoregion) +
-  geom_density_ridges(alpha = 0.7) +  
+plot_p25 <- ggplot(mean_ratio_draw, aes(x = pasture1_p25, y = reorder(ecoregion, -pasture1_p25), fill = ecoregion)) +
+  geom_density_ridges(alpha = 0.6, scale = 1.5) +  
   labs(title = "25th percentile",
        x = "sensitivity\n(N forest/N pasture)",
        y = "Ecoregion") +
@@ -171,7 +150,7 @@ plot_p25 <- ggplot(mean_ratio_draw, aes(x = pasture1_p25, y = reorder(ecoregion,
         axis.title.x = element_blank(),  
         axis.title.y = element_blank(),
         plot.title = element_text(size = 10, face = "bold")) +
-  scale_x_continuous(limits = c(0, 2)) +
+  scale_x_continuous(limits = c(0, 6)) +
   stat_density(geom = "line", position = "identity", aes(x = pasture1_p25), adjust = 1, kernel = "gaussian")
 
 plot_mean <- ggplot(mean_ratio_draw, aes(x = pasture1_mean, y = reorder(ecoregion, -pasture1_mean), fill = ecoregion)) +
@@ -181,7 +160,7 @@ plot_mean <- ggplot(mean_ratio_draw, aes(x = pasture1_mean, y = reorder(ecoregio
        y = "Ecoregion") +
   theme_classic() +
   theme(legend.position = "none") +
-  scale_x_continuous(limits = c(0, 2)) +
+  scale_x_continuous(limits = c(0, 50)) +
   stat_density(geom = "line", position = "identity", aes(x = pasture1_mean), adjust = 1, kernel = "gaussian")
 
 plot_p50 <- ggplot(mean_ratio_draw, aes(x = pasture1_p50, y = reorder(ecoregion, -pasture1_p50), fill = ecoregion)) +
@@ -196,7 +175,7 @@ plot_p50 <- ggplot(mean_ratio_draw, aes(x = pasture1_p50, y = reorder(ecoregion,
         axis.title.x = element_blank(),  
         axis.title.y = element_blank(),
         plot.title = element_text(size = 10, face = "bold")) +
-  scale_x_continuous(limits = c(0, 2)) +
+  scale_x_continuous(limits = c(0, 6)) +
   stat_density(geom = "line", position = "identity", aes(x = pasture1_p50), adjust = 1, kernel = "gaussian")
 
 plot_p75 <- ggplot(mean_ratio_draw, aes(x = pasture1_p75, y = reorder(ecoregion, -pasture1_p75), fill = ecoregion)) +
@@ -211,7 +190,7 @@ plot_p75 <- ggplot(mean_ratio_draw, aes(x = pasture1_p75, y = reorder(ecoregion,
         axis.title.x = element_text(size = 10),  
         axis.title.y = element_blank(),
         plot.title = element_text(size = 10, face = "bold")) +
-  scale_x_continuous(limits = c(0, 2)) +
+  scale_x_continuous(limits = c(0, 6)) +
   stat_density(geom = "line", position = "identity", aes(x = pasture1_p75), kernel = "gaussian")
 
 grid.arrange(plot_p25, plot_p50, plot_p75,  ncol=1)

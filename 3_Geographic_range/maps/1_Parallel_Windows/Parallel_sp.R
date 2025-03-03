@@ -1,24 +1,22 @@
 # Function for obtaining geographic ranges based on GBIF records, ecoregions, and 
 # altitudinal ranges (alos palsar DEM 30m) for species.
 #
-  setwd("C:/Users/Dell-PC/Dropbox/CO_DBdata")
+  setwd("C:/Users/PC/Dropbox/CO_DBdata")
 #
 # R packages
   library(raster)
-  library(rgdal)
   library(sf)
-  library(rgeos)
   library(terra)
   library(dplyr)
   library(doParallel)
   library(foreach)
   
   # Load the data and layers
-  records <- readRDS("C:/Users/Dell-PC/Dropbox/CO_DBdata/GBIF_data/records_combined_ele.rds")
-  dem <- rast("D:/Capas/America/dem/srtm/col_srtm90m.tif")
-  divisions <- st_read("D:/Capas/Colombia/Colombia/COL_adm0.shp")
+  records <- readRDS("./GBIF_data/records_combined_ele.rds")
+  dem <- rast("F:/Capas/America/dem/elev_raster/raster_elev.grd")
+  source("F:/repositorio/Dung_Beetles_ColombiaBeta/3_Geographic_range/mainland/mainland.R")
   # Get unique species and limit to 243
-  species_subset <- sort(unique(records$scientificName1))[1:5]
+  species_subset <- sort(unique(records$scientificName1))[1:2]
   
   # Define the function to process each species
   process_species <- function(species, records, divisions, dem) {

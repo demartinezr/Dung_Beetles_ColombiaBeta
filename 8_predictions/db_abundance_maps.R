@@ -9,13 +9,13 @@ library(gridExtra)
 #
 # abundance predictions for 243 species of dung beetles with 10 iterations in 
 # pasture and forest
-  db_predictions <- readRDS("C:/Users/Dell-PC/Dropbox/CO_DBdata/species_predictions.rds")
+  db_predictions <- readRDS("C:/Users/PC/Dropbox/CO_DBdata/species_predictions.rds")
 # study area ecoregions and grid
   study_area <- st_read("D:/Capas/America/ecoregions/ecoreg.shp")
   grid_2km <- st_read("D:/Capas/America/grid/grid_2km_ID_WGS84.shp")
 #
 # median and mean abundance for Ateuchus cracicus, an endemic species from Magdalena Valley
-  cracicus <- db_predictions[["Ateuchus_cracicus"]]
+  cracicus <- db_predictions[["Cryptocanthon_altus"]]
     cracicus <- cracicus %>% select(-abun__draw_600) # Abundance predicted by draw600 greater than 200 ind. does not seem reasonable
     cracicus <- cracicus %>%
       rowwise() %>%
@@ -63,12 +63,13 @@ library(gridExtra)
     
     p4 <- ggplot() +
       geom_sf(data = cracicus_grid_pasture, aes(fill = log10(mean_abundance)), color = NA) +  
-      scale_fill_viridis_c(option = "C") +
+      scale_fill_viridis_c(option = "C", limits = c(-2, 2)) +
       theme_classic() +
       labs(title = "Ateuchus cracicus in pasture",
            fill = "Mean abundance")
     
-    grid.arrange(p1, p2, p3, p4, ncol=2)  
+    grid.arrange(p1, p2, p3, p4, ncol=2) 
+    grid.arrange(p2, p4, ncol=2) 
 #
 # Using a grid 2km and join predictions points for abundance maps
   # join abundance to grid in forest

@@ -3,7 +3,7 @@ library(rgee)
 library(dplyr)
 library(brms)
 library(posterior)
-setwd("C:/Users/Dell-PC/Dropbox/CO_DBdata")
+setwd("C:/Users/PC/Dropbox/CO_DBdata")
 
 ##### extract elevations on a 2 km grid over mainland colombia #####
 `%ni%` <- Negate(`%in%`)

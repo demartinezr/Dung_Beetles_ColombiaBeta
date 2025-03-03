@@ -1,14 +1,16 @@
-setwd("C:/Users/Dell-PC/Dropbox/CO_DBdata")
+setwd("C:/Users/PC/Dropbox/CO_DBdata")
 
-library(raster)
-library(rgdal)
 library(terra)
 library(sf)
 library(dplyr)
 
 # extract America DEM
-    divisions <- st_read("D:/Capas/America/countries/America_countries.shp")  # Shapefile con divisiones
-    dem <- rast("D:/Capas/America/dem/srtm/srtm90m.tif")             # DEM
+    divisions <- st_read("F:/Capas/America/countries/America_countries.shp")  # Shapefile con divisiones
+    dem <- rast("F:/Capas/America/dem/srtm/america_srtm90m.tif")             # DEM
+# source("F:/repositorio/Dung_Beetles_ColombiaBeta/3_Geographic_range/mainland/mainland.R")
+# dem <- rast("F:/Capas/America/dem/elev_raster/raster_elev.grd")
+    plot(divisions, add=TRUE)
+    plot(dem)
     divisions_vect <- vect(divisions)
     dem_crop <- crop(dem, divisions_vect)  
     dem_masked <- mask(dem_crop, divisions_vect)
