@@ -62,7 +62,7 @@ ggplot(mean_ratio_draw, aes(x = log10(mean_ratio))) +
   ) +
   theme_classic()
 
-################# Analysis of sensitivities for ecoregions ####################
+################# Analysis of sensitivities for ecoregions scale ####################
 setwd("C:/Users/PC/Dropbox/CO_DBdata")
 library(sf)
 library(dplyr)
@@ -77,7 +77,7 @@ library(gridExtra)
 db_predictions <- readRDS("./species_predictions.rds")
 
 # Study area ecoregions
-study_area <- st_read("D:/Capas/America/ecoregions/ecoreg.shp")
+study_area <- st_read("F:/Capas/America/ecoregions/ecoreg.shp")
 study_area <- st_make_valid(study_area)
 st_is_valid(study_area)
 # Create a list to store sf dataframes by ecoregion
@@ -86,6 +86,7 @@ names(ec_points) <- study_area$ECO_NAME  # Use ecoregion names
 
 # Iterate over each ecoregion
 for (i in seq_len(nrow(study_area))) {
+  cat("ecoregion:", i, "of", nrow(study_area), "\n") 
   polygon <- study_area[i, ]
   # Filter points of all species that fall within the ecoregion
   points_in_ecoregion <- do.call(rbind, lapply(db_predictions, function(df) {
@@ -96,9 +97,13 @@ for (i in seq_len(nrow(study_area))) {
 }
 saveRDS(ec_points, "./Analysis/mean_abundance/ecoregions_predictions_2.rds")
 
-# ecoregions analysis
-ecoregions_predictions <- readRDS("./Analysis/mean_abundance/ecoregions_predictions.rds")
+########################## ecoregions analysis ###############################
+ecoregions_predictions <- readRDS("./Analysis/mean_abundance/ecoregions_predictions_2.rds")
 
+regional_richness <- data.frame(
+  sf_dataframe = names(ecoregions_predictions), 
+  Total = sapply(ecoregions_predictions, function(x) n_distinct(x$scientificName)), row.names = NULL 
+)
 # Get the region names from the list names
 region_names <- gsub(" forests", "", names(ecoregions_predictions))
 
@@ -134,7 +139,7 @@ mean_ratio <- function(df, df_name) {
     mutate(ecoregion = df_name)
 }
 mean_ratio_draw <- bind_rows(mapply(mean_ratio, ratio_draw, names(ratio_draw), SIMPLIFY = FALSE))
-mean_ratio_col <- readRDS("./mean_ratio_col.rds")
+mean_ratio_col <- readRDS("./mean_ratio_col_2.rds")
 mean_ratio_draw$ecoregion <- gsub(" forests", "", mean_ratio_draw$ecoregion)
 mean_ratio_draw <- bind_rows(mean_ratio_draw, mean_ratio_col)
 
@@ -143,14 +148,16 @@ plot_p25 <- ggplot(mean_ratio_draw, aes(x = pasture1_p25, y = reorder(ecoregion,
   labs(title = "25th percentile",
        x = "sensitivity\n(N forest/N pasture)",
        y = "Ecoregion") +
-  theme_classic() +
+  theme_bw() +
   theme(legend.position = "none",
         axis.text.x = element_text(size=10),
         axis.text.y = element_text(size=6),
         axis.title.x = element_blank(),  
         axis.title.y = element_blank(),
         plot.title = element_text(size = 10, face = "bold")) +
-  scale_x_continuous(limits = c(0, 6)) +
+  scale_x_log10(breaks = c(0.1, 0.5, 1, 3, 6), 
+                labels = c("0.1","0.5", "1", "3", "6"),
+                limits = c(0.1, 6)) +
   stat_density(geom = "line", position = "identity", aes(x = pasture1_p25), adjust = 1, kernel = "gaussian")
 
 plot_mean <- ggplot(mean_ratio_draw, aes(x = pasture1_mean, y = reorder(ecoregion, -pasture1_mean), fill = ecoregion)) +
@@ -194,6 +201,8 @@ plot_p75 <- ggplot(mean_ratio_draw, aes(x = pasture1_p75, y = reorder(ecoregion,
   stat_density(geom = "line", position = "identity", aes(x = pasture1_p75), kernel = "gaussian")
 
 grid.arrange(plot_p25, plot_p50, plot_p75,  ncol=1)
+
+mean_ratio_draw %>% group_by(ecoregion) %>% summarise(mean=mean(pasture1_mean))
 
 ################################################################################
 relative_diff <- mean_ratio_draw %>%
