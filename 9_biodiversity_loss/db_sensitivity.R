@@ -6,8 +6,8 @@ library(ggplot2)
 
 setwd("C:/Users/PC/Dropbox/CO_DBdata")
 
-db_predictions <- readRDS("./species_predictions.rds")
-db_predictions_2 <- readRDS("./species_predictions_2.rds")
+#db_predictions <- readRDS("./species_predictions.rds")
+db_predictions <- readRDS("./species_predictions_100.rds")
 
 
 ############# Analysis of species specific sensitivities #####################
@@ -18,15 +18,15 @@ sp_names <- names(db_predictions)
 abundance_change <- function(sf_df, sp_name) {
   sf_df %>%
     st_drop_geometry() %>% 
-    # Divide into forest (pasture = 1) and pasture (pasture = 0)
+    # Divide into forest (pasture = 0) and pasture (pasture = 1)
     group_by(pasture) %>%
     summarise(across(starts_with("abun__draw_"), \(x) sum(x, na.rm = TRUE)), .groups = "drop") %>%
     pivot_wider(names_from = pasture, values_from = starts_with("abun__draw_"), 
                 names_glue = "{.value}_pasture{pasture}") %>%
     mutate(across(ends_with("_pasture1"), 
-                  ~ .x / get(sub("_pasture1", "_pasture0", cur_column())), 
+                  ~ get(sub("_pasture1", "_pasture0", cur_column())) / .x, 
                   .names = "ratio_{.col}")) %>%
-    select(starts_with("ratio_")) %>%
+    dplyr::select(starts_with("ratio_")) %>%
     mutate(scientificName = sp_name)
 }
 # Apply the function for each species
@@ -41,27 +41,31 @@ mean_ratio <- function(df, df_name) {
       median_ratio = median(c_across(starts_with("ratio_abun__draw_"))[is.finite(c_across(starts_with("ratio_abun__draw_")))], na.rm = TRUE)
     ) %>%
     ungroup() %>%
-    select(scientificName, mean_ratio, median_ratio) %>%
+    dplyr::select(scientificName, mean_ratio, median_ratio) %>%
     mutate(scientificName = df_name)
 }
 # Apply the function to each species
 mean_ratio_draw <- bind_rows(mapply(mean_ratio, ratio_draw, names(ratio_draw), SIMPLIFY = FALSE))
 
-# remove ratios
-mean_ratio_draw <- mean_ratio_draw %>%
-  filter(!scientificName %in% c("Sulcophanaeus_leander", "Coprophanaeus_edmondsi", "Deltochilum_orbiculare"))
-
 # plot for the distribution of the mean abundance change across species 
-ggplot(mean_ratio_draw, aes(x = log10(mean_ratio))) +
-  geom_histogram(binwidth = 0.1, fill = "grey90", color = "black", alpha = 0.7) +
-  geom_vline(xintercept = 0, linetype = "dashed", color = "black", linewidth = 1) +  # Línea en x = 1
-  labs(
-    x = "sensitivity",
-    y = "Frecuency",
-    title = "The distribution of species-specific sensitivities to forest-pasture conversion"
-  ) +
-  theme_classic()
+fig_1c <- ggplot(mean_ratio_draw, aes(x = log10(mean_ratio))) +
+  geom_histogram(binwidth = 0.2, fill = "grey90", color = "black", alpha = 1) +
+    geom_vline(xintercept = 0, linetype = "dashed", color = "black", linewidth = 1) +
+    geom_vline(xintercept = c(-1, 1, 2, 3, 4), 
+             linetype = "dotted", color = "black", linewidth = 0.8) +
+  
+  scale_x_continuous(name = "Sensitivity",
+    breaks = c(-1, 0, 1, 2, 3, 4),
+    labels = c("10x pasture", "0", "10x forest", "100x forest", "1,000x forest", "10,000x forest")) +
+  labs( 
+    y = "Frequency") +
+#    title = "The distribution of species-specific sensitivities to forest-pasture conversion") +
+  theme_bw(base_size = 14) +
+  theme(
+    plot.title = element_text(hjust = 0.5))
 
+ggsave("./fig_1c.jpeg", plot = fig_1c, width = 8.5, height = 3, units = "in",        
+       dpi = 300, device = "jpeg")
 ################# Analysis of sensitivities for ecoregions scale ####################
 setwd("C:/Users/PC/Dropbox/CO_DBdata")
 library(sf)
