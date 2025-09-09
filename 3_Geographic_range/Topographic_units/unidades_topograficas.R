@@ -1,4 +1,4 @@
-setwd("D:/Doctorado/Tesis/Topographic_Col/inputs")
+setwd("F:/Doctorado/Tesis/Topographic_Col/inputs")
 library(ggplot2)
 library(sf)
 library(dplyr)

@@ -30,7 +30,7 @@ avg_ratio <- function(fa_pa_i,  cutoff_use){
 get_avg_cell_ratios <- function(forest, pasture, cutoff_type, cutoff){
   if(!all.equal(dim(forest), dim(pasture))){stop("forest_abun and pasture_abun have different dimensions")}
   if(cutoff <= 0){stop("cutoff must be greater than zero and less than one")}
-  if(cutoff >= 10){stop("cutoff must be greater than zero and less than one")}
+  if(cutoff >= 12){stop("cutoff must be greater than zero and less than one")}
   fa <- forest[, 4:ncol(forest)]
   pa <- pasture[, 4:ncol(pasture)]
   fa_pa <- cbind(fa, pa)

@@ -84,9 +84,9 @@ pd <- do.call(rbind, species_frames) |>
     )
 
 pd_pasture <- pd |>
-  mutate(pasture = 0)
-pd_forest <- pd |>
   mutate(pasture = 1)
+pd_forest <- pd |>
+  mutate(pasture = 0)
 
 prediction_data <- rbind(pd_pasture, pd_forest) |>
   mutate(subregion_species = paste0(subregion, "__", scientificName))
@@ -144,4 +144,4 @@ for(i in 1:nrow(db_traits)){
 
 names(species_predictions) <- db_traits$scientificName
 
-saveRDS(species_predictions, "species_predictions_60draws.RDS")
+saveRDS(species_predictions, "species_predictions_100draws.RDS")

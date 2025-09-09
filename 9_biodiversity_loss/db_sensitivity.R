@@ -7,8 +7,8 @@ library(ggplot2)
 setwd("C:/Users/PC/Dropbox/CO_DBdata")
 
 #db_predictions <- readRDS("./species_predictions.rds")
-db_predictions <- readRDS("./species_predictions_100.rds")
-
+#db_predictions <- readRDS("./species_predictions_100.rds")
+ecoregions_all <- as.data.frame(readRDS("./ecoregions_100.rds"))
 
 ############# Analysis of species specific sensitivities #####################
 
@@ -48,7 +48,7 @@ mean_ratio <- function(df, df_name) {
 mean_ratio_draw <- bind_rows(mapply(mean_ratio, ratio_draw, names(ratio_draw), SIMPLIFY = FALSE))
 
 # plot for the distribution of the mean abundance change across species 
-fig_1c <- ggplot(mean_ratio_draw, aes(x = log10(mean_ratio))) +
+fig_1c <- ggplot(mean_ratio_draw, aes(x = log10(median_ratio))) +
   geom_histogram(binwidth = 0.2, fill = "grey90", color = "black", alpha = 1) +
     geom_vline(xintercept = 0, linetype = "dashed", color = "black", linewidth = 1) +
     geom_vline(xintercept = c(-1, 1, 2, 3, 4), 
@@ -62,7 +62,11 @@ fig_1c <- ggplot(mean_ratio_draw, aes(x = log10(mean_ratio))) +
 #    title = "The distribution of species-specific sensitivities to forest-pasture conversion") +
   theme_bw(base_size = 14) +
   theme(
-    plot.title = element_text(hjust = 0.5))
+    axis.text.x = element_text(size = 11),
+    axis.text.y = element_text(size = 11),
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_blank(),
+    plot.title = element_text(size = 12, face = "bold"))
 
 ggsave("./fig_1c.jpeg", plot = fig_1c, width = 8.5, height = 3, units = "in",        
        dpi = 300, device = "jpeg")

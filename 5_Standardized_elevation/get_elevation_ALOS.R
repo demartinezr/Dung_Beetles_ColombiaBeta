@@ -1,4 +1,4 @@
-# This script simulates the posterior occupancy probability for each species-point across Colombia at 2 km resolution
+# This script simulates the posterior predicted abundances for each species-point across Colombia at 2 km resolution
 # for one posterior iteration
 
 library(sf)
