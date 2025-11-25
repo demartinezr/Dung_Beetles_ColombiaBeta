@@ -7,6 +7,7 @@ library(tidyverse)
 library(ggspatial)
 library(ggnewscale)
 library(RColorBrewer)
+library(cowplot) 
 
 
 hillshade <- rast("F:/Capas/Hillshade/World_e-Atlas-UCSD_SRTM30-plus_v8_Hillshading.tiff")
@@ -171,19 +172,19 @@ mean_ratio_draw <- bind_rows(mapply(mean_ratio, ratio_draw, names(ratio_draw), S
 fig_1d <- ggplot(mean_ratio_draw, aes(x = log(median_ratio))) +
   geom_histogram(binwidth = 0.2, fill = "grey90", color = "black", alpha = 1) +
   geom_vline(xintercept = 0, linetype = "solid", color = "red", linewidth = 1) +
-  geom_vline(xintercept = c(-2.5, -0.1, 6.4), 
-             linetype = "dashed", color = "black", linewidth = 0.8) +
+#  geom_vline(xintercept = c(-2.5, -0.1, 6.4), 
+#             linetype = "dashed", color = "black", linewidth = 0.8) +
   scale_x_continuous(
     name = "Sensitivity",
-    breaks = log(c(0.1, 1, 10, 100, 1000)),
-    labels = c("10x\npasture", "0","10x", "100x","1000x\nforest")) +
+    breaks = log(c(0.1, 1, 1000)),
+    labels = c("10x\npasture", "0", "1000x\nforest")) +
   labs(y = "Frequency") +
   theme_bw() +
   theme(
-    axis.text.x = element_text(size = 13, color = "black"),
-    axis.text.y = element_text(size = 13, color = "black"),
-    axis.title.x = element_text(size = 14, face = "bold"),
-    axis.title.y = element_text(angle = 270, hjust = 0.5, vjust = 0.5, size = 14, face = "bold")) 
+    axis.text.x = element_text(size = 10, color = "black"),
+    axis.text.y = element_text(size = 10, color = "black"),
+    axis.title.x = element_text(size = 11),
+    axis.title.y = element_text(angle = 90, hjust = 0.5, vjust = 0.5, size = 11)) 
 
 ggsave("./fig_1d.jpeg", plot = fig_1d, width = 5, height = 2.5, units = "in",        
        dpi = 300, device = "jpeg")
@@ -245,7 +246,7 @@ library(magick)
 library(ggplot2)
 library(cowplot)
 fig_a <- image_read("./fig_1A.jpeg")
-fig_b <- image_read("./fig_1B.jpg")
+fig_b <- image_read("./fig_1C_A.jpg")
 fig_c <- image_read("./fig_1C.jpg")
 fig_d <- image_read("./fig_1d_rot.jpg")
 fig_A <- ggdraw() + draw_image(fig_a)
@@ -255,10 +256,13 @@ fig_D <- ggdraw() + draw_image(fig_d)
 
 final_plot_cowplot <- plot_grid(
   plot_grid(fig_A, fig_B, ncol = 2, labels = c("a", "b"), label_size = 12, label_fontface = "bold"),
-  plot_grid(fig_C, fig_D, ncol = 2, labels = c("c", "d"), label_size = 12, label_fontface = "bold"),
+  ncol = 1)
+final_plot_cowplotA <- plot_grid(
+  plot_grid(fig_A, fig_C, ncol = 2, labels = c("a", "b"), label_size = 12, label_fontface = "bold"),
   ncol = 1)
 
-ggsave("figura_cowplot.jpg", final_plot_cowplot, width = 8.5, height = 11, units = "in", dpi = 300)
+
+ggsave("fig_1.jpg", final_plot_cowplotA, width = 8.5, height = 5.4, units = "in", dpi = 300)
 
 # Crear figura vacía de fondo (tamaño carta)
 final_plot <- ggdraw() +

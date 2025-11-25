@@ -98,7 +98,11 @@ draw_summary_latlon <- readRDS("./decline/draw_summary_latlon_eco_mod.rds")
 draw_summary_latlon_mod <- draw_summary_latlon %>%
   st_drop_geometry() %>% 
   mutate(prop_losers = losers / (losers + winners),
-    prop_winners = winners / (losers + winners))
+    prop_winners = winners / (losers + winners)) %>%
+  group_by(draw) %>%
+  summarise(
+    prop_losers = mean(prop_losers, na.rm = TRUE),
+    prop_winners = mean(prop_winners, na.rm = TRUE))
 
 draw_summary_latlon_mod$ecoregions <- gsub(" forests", "", draw_summary_latlon_mod$ecoregions)
 draw_summary_latlon_mod$ecoregions <- recode(draw_summary_latlon_mod$ecoregions,
@@ -116,7 +120,11 @@ draw_summary_latlon_mod$ecoregions <- recode(draw_summary_latlon_mod$ecoregions,
 draw_summary_ecoregions <- readRDS("./decline/draw_summary_ecoregions_eco_mod.rds")
 draw_summary_ecoregions_mod <- draw_summary_ecoregions %>%
   mutate(prop_losers = losers / (losers + winners),
-         prop_winners = winners / (losers + winners))
+         prop_winners = winners / (losers + winners))  %>%
+  group_by(draw) %>%
+  summarise(
+    prop_losers = mean(prop_losers, na.rm = TRUE),
+    prop_winners = mean(prop_winners, na.rm = TRUE))
 
 draw_summary_ecoregions_mod$draw <- gsub("ratio_abun__draw_(\\d+)_pasture1", "ratio__draw_\\1", draw_summary_ecoregions_mod$draw)
 
@@ -158,9 +166,9 @@ mean(draw_summary_pc_mod$prop_losers, na.rm = T)
 
 richness_scales <- bind_rows(
   draw_summary_latlon_mod %>%
-    group_by(draw, ecoregions) %>%
+    group_by(draw) %>%
     summarise(across(
-      c(prop_losers, prop_winners, losers, winners, total), 
+      c(prop_losers, prop_winners), 
       ~ mean(.x, na.rm = TRUE)
     ),
     .groups = "drop") %>%
@@ -189,11 +197,11 @@ fig_2a <- ggplot(richness_scales, aes(x = reorder(scale, prop_losers), y = prop_
   geom_violin(trim = FALSE, alpha = 0.5) +
   geom_boxplot(width = 0.1, outlier.shape = NA) +
   scale_fill_manual(values = colors_scales) +
-  scale_y_continuous(limits=c(0, 1), breaks = seq(0.2, 1, by = 0.2)) +
+  scale_y_continuous(limits=c(0.2, 1), breaks = seq(0.2, 1, by = 0.2)) +
   labs(title = "a", x = NULL, y = "Proportion of declining species", fill = "Scale") +
   theme_bw() +
   theme(legend.position = "none",
-        legend.position.inside  = c(0.99, 0.02),         # Posición dentro del panel (x derecha, y abajo)
+        legend.position.inside  = c(0.99, 0.3),         # Posición dentro del panel (x derecha, y abajo)
         legend.justification = c("right", "bottom"),  # Ancla la esquina inferior derecha
         legend.direction = "horizontal",         # Una fila
         legend.box.background = element_rect(color = "black", fill = "white", linewidth = 0.5),
@@ -207,6 +215,17 @@ fig_2a <- ggplot(richness_scales, aes(x = reorder(scale, prop_losers), y = prop_
         axis.text.y = element_text(size = 12, color = "black"),
         axis.text.x = element_blank())
 
+
+grob_hist <- ggplotGrob(fig_1d)
+
+final_plot <- fig_2a +
+  annotation_custom(
+    grob = grob_hist,
+    xmin = 2, xmax = 3.6,     # Ajusta según ubicación deseada
+    ymin = 0.18, ymax = 0.65   # Ajusta el tamaño
+  )
+
+ 
 ggsave("./richness_plot.jpg", plot = richness_plot, width = 6.5, height = 4, units = "in",        
        dpi = 300, device = "jpeg")
 
@@ -465,13 +484,15 @@ fig_4b <- ggplot(diff_all, aes(x = difference, y = reorder(ecoregion, difference
   scale_x_continuous(limits=c(0.75, 1.75)) +
   stat_density(geom = "line", position = "identity", aes(x = difference), kernel = "gaussian")
 
-fig_2 <- fig_2a / fig_2b
+fig_2 <- final_plot / fig_2b +
+  plot_layout(heights = c(1, 1))
+
 fig_2 <- cowplot::plot_grid(
-  fig_2a, fig_2b, fig_2c,
+  final_plot, fig_2b,
   ncol = 1,
+  rel_heights = c(1.5, 1),  # ajusta según el espacio que requiera cada figura
   align = "v",  # alinea verticalmente los ejes
-  axis = "l",   # alinea el eje izquierdo
-  rel_heights = c(0.25, 0.30, 0.45)  # ajusta según el espacio que requiera cada figura
+  axis = "l"
 )
 
 

@@ -56,8 +56,9 @@ db_predictions <- readRDS("./species_predictions_100.rds")
     ecoregions_all <- bind_rows(ecoregions_predictions)
 #    saveRDS(ecoregions_all, "./ecoregions_100_mod.rds")
 
-################################################################################
-####### Compute biodiversity loss across spatial scales and posterior ##########
+###############################################################################
+#-------- Compute biodiversity loss across spatial scales and posterior
+    
 ecoregions_all <- as.data.frame(readRDS("./ecoregions_100_mod.rds"))
     
     paramo_sp <- c(
@@ -145,18 +146,24 @@ ecoregions_all <- as.data.frame(readRDS("./ecoregions_100_mod.rds"))
   saveRDS(colombia_ratios_list, "./diversity_loss/colombia_ratios_list_100_mod_10.rds")
   
 ################################################################################
-#################### ecoregions sensitivity approach ###########################
+#---------------------ecoregions sensitivity approach
 
-# load data  
-  # local scale 2km
+# data  
+  # local scale 2 x 2km
     cell_ratios_list <- readRDS("./diversity_loss/cell_ratios_list_100_mod.rds")
     cell_ratios_df <- bind_rows(cell_ratios_list, .id = "draw_col")
+    cell_ratios_df <- cell_ratios_df %>%
+      group_by(draw_col) %>%
+      summarise(avg_logratio = mean(med_logratio, na.rm = T))
   # ecoregion scale
     ecoregion_ratios_list <- readRDS("./diversity_loss/ecoregion_ratios_list_100_mod.rds")
     ecoregion_ratios_df <- bind_rows(lapply(ecoregion_ratios_list, function(draw) {
       bind_rows(draw, .id = "ecoregion")
     }), .id = "draw_col")
-  # Pan-Colombia scale
+    ecoregion_ratios_df <- ecoregion_ratios_df %>%
+      group_by(draw_col) %>%
+      summarise(avg_logratio = mean(med_logratio, na.rm = T))
+  # near national scale
     colombia_ratios_list <- readRDS("./diversity_loss/colombia_ratios_list_100_mod.rds")
     colombia_ratios_df <- bind_rows(lapply(colombia_ratios_list, function(draw) {
       bind_rows(draw) %>% mutate(ecoregion = "Near national")
@@ -164,7 +171,7 @@ ecoregions_all <- as.data.frame(readRDS("./ecoregions_100_mod.rds"))
 
 ###########################
 ## Colombia-wide comparison
-  # local scale 2km metrics
+  # local scale 2x2km metrics
     mean(cell_ratios_df$med_logratio, na.rm = T)
     mean(exp(cell_ratios_df$med_logratio), na.rm = T)
     exp(mean(cell_ratios_df$med_logratio, na.rm = T))
@@ -172,7 +179,7 @@ ecoregions_all <- as.data.frame(readRDS("./ecoregions_100_mod.rds"))
     mean(ecoregion_ratios_df$med_logratio, na.rm = T)
     mean(exp(ecoregion_ratios_df$med_logratio))
     exp(mean(ecoregion_ratios_df$med_logratio))
-  # Pan-Colombia metrics  
+  # near national metrics  
     mean(colombia_ratios_df$med_logratio, na.rm = T)
     mean(exp(colombia_ratios_df$med_logratio))
     exp(mean(colombia_ratios_df$med_logratio))
@@ -185,7 +192,7 @@ ecoregions_all <- as.data.frame(readRDS("./ecoregions_100_mod.rds"))
     quantile(ecoregion_ratios_df$med_logratio, probs = c(0.05, 0.95))
     round(quantile(exp(ecoregion_ratios_df$med_logratio), probs = c(0.05, 0.95)), 2) # absolute
     round((exp(quantile(ecoregion_ratios_df$med_logratio, probs = c(0.05, 0.95), na.rm = TRUE)) - 1) * 100, 1) # percent 
-  # IC pan_colombia
+  # IC near national
     quantile(colombia_ratios_df$med_logratio, probs = c(0.05, 0.95))
     round(quantile(exp(colombia_ratios_df$med_logratio), probs = c(0.05, 0.95)), 2) # absolute
     round((exp(quantile(colombia_ratios_df$med_logratio, probs = c(0.05, 0.95), na.rm = TRUE)) - 1) * 100, 1) # percent 
@@ -207,35 +214,21 @@ ecoregions_all <- as.data.frame(readRDS("./ecoregions_100_mod.rds"))
                 CI_5 = round(quantile(rel_dif, probs = 0.05, na.rm = TRUE), 2),
                 CI_95 = round(quantile(rel_dif, probs = 0.95, na.rm = TRUE), 2))
     
-# figure 1
+# figure 2
     
-    abundance_scales <- bind_rows(
+abundance_scales <- bind_rows(
       cell_ratios_df %>%
-        select(-lon, -lat) %>%
-        group_by(draw_col, ecoregions) %>%
-        summarise(across(
-          c(avg_ratio, avg_logratio, med_logratio, 
-            p_25_logratio, p_75_logratio, n), 
-          ~ mean(.x, na.rm = TRUE)
-        ),
-        .groups = "drop") %>%
-        rename(ecoregion = ecoregions) %>%
         mutate(scale = "Local"),
       
       ecoregion_ratios_df %>%
         mutate(scale = "Ecoregion"),
       
       colombia_ratios_df %>%
-        mutate(scale = "Near national")
-    )
+        mutate(scale = "Near national"))
     
-    abundance_scales$scale <- factor(abundance_scales$scale,
+abundance_scales$scale <- factor(abundance_scales$scale,
                                     levels = c("Local", "Ecoregion", "Near national"))
     
-    # Obtener los extremos y el centro de RdBu
-#    colors <- rev(brewer.pal(11, "RdBu"))  # rev() pone azul al inicio, rojo al final
-#    col_vec <- setNames(colors[c(1, 6, 11)], 
-#                        c("Near national", "Ecoregion", "Local"))
 colors_scales <- c("Local"= "#762a83",
                        "Ecoregion" = "#1b7837",
                        "Near national" = "yellow")
@@ -248,9 +241,9 @@ fig_2b <- ggplot(abundance_scales, aes(x = reorder(scale, avg_logratio), y = avg
                      labs(title = "b", x = NULL, y = "Sensitivity", fill = "Scale") +
                      theme_bw() +
                      theme(legend.position = "none",
-                           #legend.position.inside  = c(0.99, 0.02),         # Posición dentro del panel (x derecha, y abajo)
-                           #legend.justification = c("right", "bottom"),  # Ancla la esquina inferior derecha
-                           legend.direction = "horizontal",         # Una fila
+                           #legend.position.inside  = c(0.99, 0.02),  
+                           #legend.justification = c("right", "bottom"),
+                           legend.direction = "horizontal",       
                            #legend.box.background = element_rect(color = "black", fill = "white", linewidth = 0.5),
                            #legend.box.margin = margin(2, 2, 2, 2),
                            plot.title = element_text(size = 12, face = "bold"),
@@ -260,13 +253,13 @@ fig_2b <- ggplot(abundance_scales, aes(x = reorder(scale, avg_logratio), y = avg
                            axis.ticks.x = element_blank(),
                            axis.title.y = element_text(size = 13, color = "black"),
                            axis.text.y = element_text(size = 12, color = "black"),
-                           axis.text.x = element_blank())
+                           axis.text.x = element_text(size = 12, color = "black"))
 
      ggsave("./abundance_plot.jpg", plot = abundance_plot, width = 6.5, height = 4, units = "in",        
             dpi = 300, device = "jpeg")
 
 ########
-## maps 
+#-- maps 
   # log-ratios map
     colombia <- ne_countries(scale = "medium", returnclass = "sf") %>%
       dplyr::filter(name == "Colombia")
@@ -423,44 +416,6 @@ ggsave("./log_maps.jpeg", plot = log_maps, width = 8.5, height = 4, units = "in"
     
     plot_25 / plot_mean / plot_75
     
-    
-    
-#    ratios_df$ecoregion <- gsub(" forests", "", ratios_df$ecoregion)
-#    ratios_df$ecoregion <- recode(ratios_df$ecoregion,
-#                                  "Apure-Villavicencio dry"         = "Villavicencio dry",
-#                                  "Cauca Valley montane"            = "Cauca montane",
-#                                  "Cordillera Oriental montane"     = "EC montane",
-#                                  "Eastern Cordillera real montane" = "CC montane",
-#                                  "Magdalena Valley dry"            = "Magdalena dry",
-#                                  "Magdalena Valley montane"        = "Magdalena Valley",
-#                                  "Northern Andean páramo"          = "Andean páramo",
-#                                  "Northwestern Andean montane"        = "WC montane")
-    
-    # boxplot ecoregion log ratios
-#    p1 <- ggplot(ratios_df, aes(x = reorder(ecoregion, p_25_logratio), y = p_25_logratio, fill = ecoregion)) +
-#      geom_boxplot(color = "black", alpha = 0.7) +
-#      scale_fill_viridis_d() +
-#      labs(title = "25th percentile", x = NULL, y = "Logratio") +
-#      theme_bw() +
-#      scale_y_continuous(limits=c(0,8)) +
-#      theme(legend.position = "none", axis.text.x = element_text(angle = 60, hjust = 1, vjust = 1, size = 8))
-#    
-#    p2 <- ggplot(ratios_df, aes(x = reorder(ecoregion, avg_logratio), y = avg_logratio, fill = ecoregion)) +
-#      geom_boxplot(color = "black", alpha = 0.7) +
-#      scale_fill_viridis_d() +
-#      labs(title = "Mean", x = NULL, y = "Logratio") +
-#      theme_bw() +
-#      scale_y_continuous(limits=c(0,8)) +
-#      theme(legend.position = "none",axis.text.x = element_text(angle = 60, hjust = 1, vjust = 1, size = 8))
-#    
-#    p3 <- ggplot(ratios_df, aes(x = reorder(ecoregion, p_75_logratio), y = p_75_logratio, fill = ecoregion)) +
-#      geom_boxplot(color = "black", alpha = 0.7) +
-#      scale_fill_viridis_d() +
-#      labs(title = "75th percentile", x = NULL, y = "Logratio") +
-#      theme_bw() +
-#      scale_y_continuous(limits=c(0,8)) +
-#      theme(legend.position = "none", axis.text.x = element_text(angle = 60, hjust = 1, vjust = 1, size = 8))
-#   
 ##############################    
 # Plot relative difference
     relative_diff <- ratios_df %>%
@@ -590,10 +545,10 @@ ggsave("./log_maps.jpeg", plot = log_maps, width = 8.5, height = 4, units = "in"
       scale_x_continuous(limits = c(-1, 12), breaks = c(1, 4, 8, 12, 16, 20)) +
       stat_density(geom = "line", position = "identity", aes(x = p_75_ratio_dif), kernel = "gaussian")
 
-#####################################################
-## Plot Relative difference cummulative
+################################################################################
+#------------------- Plot Relative difference cummulative
     
-  # get summaries for metrics by ecoregions and Pan-Colombia sensitivities
+  # get summaries for metrics by ecoregions and near national sensitivities
     ratios_summary_df <- ecoregion_ratios_df %>%
       group_by(ecoregion) %>%
       summarise(
@@ -662,7 +617,6 @@ ggsave("./log_maps.jpeg", plot = log_maps, width = 8.5, height = 4, units = "in"
     }
   }
   
-  # from list to dataframe
   results_df <- bind_rows(results_all)
   
   # summary by metrics

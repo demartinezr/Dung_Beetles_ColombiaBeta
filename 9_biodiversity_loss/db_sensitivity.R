@@ -1,14 +1,14 @@
+setwd("C:/Users/PC/Dropbox/CO_DBdata")
+
 library(sf)
 library(dplyr)
 library(tidyr)
 library(purrr)
 library(ggplot2)
 
-setwd("C:/Users/PC/Dropbox/CO_DBdata")
-
 #db_predictions <- readRDS("./species_predictions.rds")
-#db_predictions <- readRDS("./species_predictions_100.rds")
-ecoregions_all <- as.data.frame(readRDS("./ecoregions_100.rds"))
+db_predictions <- readRDS("./species_predictions_100.rds")
+#ecoregions_all <- as.data.frame(readRDS("./ecoregions_100.rds"))
 
 ############# Analysis of species specific sensitivities #####################
 
