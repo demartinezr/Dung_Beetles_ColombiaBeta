@@ -1,3 +1,21 @@
-This repository contains a fully reproducible workflow for assembling species occurrence data, integrating trait and environmental information, preparing spatial predictions, fitting statistical models, and quantifying biodiversity loss across spatial scales. The pipeline is organized into sequential modules, each stored in its own directory, that transform raw inputs into standardized datasets, generate model-ready structures, run GLMM and Bayesian abundance models, produce spatial predictions under forest and pasture scenarios, and compute biodiversity metrics across multiple posterior draws.
+This repository contains a fully reproducible workflow for assembling species occurrence records, integrating trait and environmental data, generating spatial predictors, fitting statistical models, producing spatial predictions, and quantifying biodiversity loss across spatial scales. The workflow is organized into sequential modules that transform raw inputs into standardized datasets, build model-ready objects, run both GLMM and Bayesian models, generate mapped outputs, and compute biodiversity metrics from posterior samples.
 
-Each step can be executed independently. Intermediate objects are written to disk, allowing users to rerun specific stages without regenerating the full pipeline. All scripts list their package dependencies and follow consistent naming conventions to ensure transparency and reproducibility.
+The repository is structured so that each step can be executed independently. Intermediate outputs are saved to disk, allowing individual stages to be re-run without rebuilding the entire pipeline. Directory names reflect the main workflow components:
+
+1_GBIF_search – Downloads and filters initial GBIF occurrence data.
+
+2_GBIF_clean – Cleans, deduplicates, and standardizes occurrence records.
+
+3_Geographic_range – Estimates species’ geographic ranges.
+
+4_Traits – Compiles and formats trait data.
+
+5_Standardized_elevation – Extracts and standardizes elevation predictors.
+
+6_DB_dataset – Assembles the final dataset used for modelling.
+
+7_models – Contains GLMM and Bayesian model scripts.
+
+8_predictions – Generates spatial predictions from fitted models.
+
+9_biodiversity_loss – Calculates biodiversity loss metrics across spatial scales.
