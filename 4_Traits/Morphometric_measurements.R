@@ -46,6 +46,30 @@ library(dplyr)
          (morphometrics$backfemurlength+
           morphometrics$backtibialength+
           morphometrics$backspurlength))
+
+# traits 'bodyShape', 'elytraShape', 'frontfemurProportion', 'fronttibiaProportion', 'backfemurProportion', 'backtibiaProportion', 'backspurProportion' Measurements 
+# (bodyShape)
+morphometrics$bodyShape <- as.numeric(morphometrics$bodywidth / morphometrics$bodylength)
+
+# (elytraShape)
+morphometrics$elytraShape <- as.numeric(morphometrics$elytrawidth / morphometrics$elytralength)
+
+# (frontfemurProportion)
+morphometrics$frontfemurProportion <- as.numeric(morphometrics$frontfemurlength / morphometrics$bodylength)
+
+# (fronttibiaProportion)
+morphometrics$fronttibiaProportion <- as.numeric(morphometrics$fronttibialength / morphometrics$bodylength)
+
+# (backfemurProportion)
+morphometrics$backfemurProportion <- as.numeric(morphometrics$backfemurlength / morphometrics$bodylength)
+
+# (backtibiaProportion)
+morphometrics$backtibiaProportion <- as.numeric(morphometrics$backtibialength / morphometrics$bodylength)
+
+# (backspurProportion)
+morphometrics$backspurProportion <- as.numeric(morphometrics$backspurlength / morphometrics$bodylength)
+
+
 # mean id duplicates (messurements by DEMR and Felicity)  
   morphometrics <- morphometrics %>%
     group_by(individual_id_number) %>%
@@ -53,7 +77,7 @@ library(dplyr)
       scientificName = first(scientificName),
       across(c(elytrawidth, elytralength, bodylength, bodywidth,
                        frontfemurlength, fronttibialength, backfemurlength, 
-                       backtibialength, backspurlength, bodysize, legratio), 
+                       backtibialength, backspurlength, bodysize, legratio, bodyShape, elytraShape, frontfemurProportion, fronttibiaProportion, backfemurProportion, backtibiaProportion, backspurProportion), 
                      mean, na.rm = TRUE))
   write.table(morphometrics, "./traits/morphometrics/output_rawdata_alltraits_2024.txt")
   morphometrics <- read.table("./traits/morphometrics/output_rawdata_alltraits_2024.txt", header=TRUE)
