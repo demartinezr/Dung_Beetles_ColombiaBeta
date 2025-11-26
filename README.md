@@ -1,6 +1,6 @@
-This repository contains a fully reproducible workflow for assembling species occurrence records, integrating trait and environmental data, generating spatial predictors, fitting statistical models, producing spatial predictions, and quantifying biodiversity loss across spatial scales. The workflow is organized into sequential modules that transform raw inputs into standardized datasets, build model-ready objects, run both GLMM and Bayesian models, generate mapped outputs, and compute biodiversity metrics from posterior samples.
+This repository contains a workflow for assembling species occurrence records, integrating trait and environmental data, generating spatial predictors, fitting statistical models, producing spatial predictions, and quantifying biodiversity loss across spatial scales. The workflow is organized into sequential modules that transform raw inputs into standardized datasets, build model-ready objects, run both GLMM and Bayesian models, generate mapped outputs, and compute biodiversity metrics from posterior samples.
 
-The repository is structured so that each step can be executed independently. Intermediate outputs are saved to disk, allowing individual stages to be re-run without rebuilding the entire pipeline. Directory names reflect the main workflow components:
+Intermediate outputs are saved to disk, allowing individual stages to be re-run without rebuilding the entire pipeline. Directory names reflect the main workflow components:
 
 1_GBIF_search – Downloads and filters initial GBIF occurrence data.
 
