@@ -56,12 +56,12 @@ library(patchwork)
   #    ggsave("./elevation_dem.jpeg", plot = elevation_dem, width = 2.5, height = 3, units = "in",        
   #           dpi = 300, device = "jpeg")
   
-  range_m <- ggplot() +
+  range_irinus_plot <- ggplot() +
     geom_sf(data = colombia, fill = "gray90", color = "black") +  
     geom_sf(data = range_irinus, fill = "darkblue", color = "darkblue", alpha = 0.5) +
     coord_sf() +
     theme_void() +
-    labs(title = "Distribución de Ateuchus irinus")
+    labs(title = NULL)
   
   #ggsave("./range_m.jpeg", plot = range_m, width = 2.5, height = 3, units = "in",        
   #       dpi = 300, device = "jpeg")          
@@ -75,11 +75,11 @@ library(patchwork)
                               resolution = 2000, 
                               crs = st_crs(study_area)$wkt)
   
-  forest_raster_irinus <- rasterize(vect(irinus_forest), forest_base_irinus, field = "mean_abundance", fun = "mean")
+  forest_raster_irinus <- rasterize(vect(irinus_forest), forest_base_irinus, field = "median_abundance", fun = "mean")
   #    forest_abundance <- global(forest_raster, fun = "sum", na.rm = TRUE)[[1]]
   #    forest_raster <- forest_raster/ forest_abundance
-  forest_raster_irinus[is.na(forest_raster_irinus)] <- 0
-  forest_raster_irinus[forest_raster_irinus >= 1] <- 1
+  #forest_raster_irinus[is.na(forest_raster_irinus)] <- 0
+  #forest_raster_irinus[forest_raster_irinus >= 1] <- 1
   #   forest_raster <- log(forest_raster)
   #   forest_min_value <- min(forest_raster[!is.na(forest_raster[]) & forest_raster[] != -Inf], na.rm = TRUE)
   #   forest_raster[forest_raster == -Inf] <- forest_min_value
@@ -87,33 +87,36 @@ library(patchwork)
   forest_irinus_df <- as.data.frame(forest_raster_masked_irinus, xy = TRUE)
   
   p1_irinus <- ggplot(forest_irinus_df) +
-    geom_sf(data = colombia, fill = "gray", color = "black") +  
-    geom_raster(aes(x = x, y = y, fill = mean)) + 
-    scale_fill_viridis_c() + 
+    geom_sf(data = colombia, fill = "gray90", color = "black") +  
+    geom_raster(aes(x = x, y = y, fill = log(mean+0.1))) + 
+    scale_fill_viridis_c(limits=c(-2.5, 5), breaks = seq(from=-2.5, to =5, by=2.5), 
+                         labels=round(exp(seq(from=-2.5, to =5, by=2.5)),0),
+                         name = "Abundance") +
     coord_sf() +
     theme_void() +
-    guides(fill = "none")+
     theme(legend.position = "none")
   
-  pasture_raster_irinus <- rasterize(vect(irinus_pasture), pasture_base_irinus, field = "mean_abundance", fun = "mean")
-  pasture_raster_irinus[is.na(pasture_raster_irinus)] <- 0
+  pasture_raster_irinus <- rasterize(vect(irinus_pasture), pasture_base_irinus, field = "median_abundance", fun = "mean")
+  #pasture_raster_irinus[is.na(pasture_raster_irinus)] <- 0
   #  pasture_raster <- log(pasture_raster)
   #  pasture_min_value <- min(pasture_raster[!is.na(pasture_raster[]) & pasture_raster[] != -Inf], na.rm = TRUE)
-  pasture_raster_irinus[pasture_raster_irinus >= 1] <- 1
+  #pasture_raster_irinus[pasture_raster_irinus >= 1] <- 1
   #  pasture_raster[pasture_raster == -Inf] <- pasture_min_value
   pasture_raster_masked_irinus <- mask(pasture_raster_irinus, vect(study_area))
   pasture_irinus_df <- as.data.frame(pasture_raster_masked_irinus, xy = TRUE)
   
   # mean abundance map in forest
   p2_irinus <- ggplot(pasture_irinus_df) +
-    geom_sf(data = colombia, fill = "gray", color = "black") + 
-    geom_raster(aes(x = x, y = y, fill = mean)) + 
-    scale_fill_viridis_c() +
+    geom_sf(data = colombia, fill = "gray90", color = "black") + 
+    geom_raster(aes(x = x, y = y, fill = log(mean+0.1))) + 
+    scale_fill_viridis_c(limits=c(-2.5, 5), breaks = seq(from=-2.5, to =5, by=2.5), 
+                         labels=round(exp(seq(from=-2.5, to =5, by=2.5)),0),
+                         name = "Abundance") +
     coord_sf() +
     theme_void() +
     theme(legend.position = "none")
   
-  fig_1b_a <-p1_irinus + p2_irinus
+  fig_1b_a <- p1_irinus + p2_irinus
   ggsave("./fig_1b_a.jpeg", plot = fig_1b_a, width = 8.5, height = 3, units = "in",        
          dpi = 300, device = "jpeg")
   
@@ -155,12 +158,12 @@ library(patchwork)
 #  ggsave("./elevation_dem.jpeg", plot = elevation_dem, width = 2.5, height = 3, units = "in",        
 #         dpi = 300, device = "jpeg")
   
-  range_m_lunicollis <- ggplot() +
+  range_lunicollis_plot <- ggplot() +
     geom_sf(data = colombia, fill = "gray90", color = "black") +  
     geom_sf(data = range_lunicollis, fill = "darkblue", color = "darkblue", alpha = 0.5) +
     coord_sf() +
     theme_void() +
-    labs(title = "Distribución de Ontherus lunicollis")
+    labs(title = NULL)
   
 #  ggsave("./range_m.jpeg", plot = range_m, width = 2.5, height = 3, units = "in",        
 #         dpi = 300, device = "jpeg")          
@@ -174,7 +177,7 @@ library(patchwork)
                        resolution = 2000, 
                        crs = st_crs(study_area)$wkt)
   
-  forest_raster_lunicollis <- rasterize(vect(lunicollis_forest), forest_base_lunicollis, field = "mean_abundance", fun = "mean")
+  forest_raster_lunicollis <- rasterize(vect(lunicollis_forest), forest_base_lunicollis, field = "median_abundance", fun = "mean")
   #    forest_abundance <- global(forest_raster, fun = "sum", na.rm = TRUE)[[1]]
   #    forest_raster <- forest_raster/ forest_abundance
   forest_raster_lunicollis[is.na(forest_raster_lunicollis)] <- 0
@@ -186,15 +189,16 @@ library(patchwork)
   forest_lunicollis_df <- as.data.frame(forest_raster_masked_lunicollis, xy = TRUE)
   
   p1_lunicollis <- ggplot(forest_lunicollis_df) +
-    geom_sf(data = colombia, fill = "gray", color = "black") +  
-    geom_raster(aes(x = x, y = y, fill = mean)) + 
-    scale_fill_viridis_c() + 
+    geom_sf(data = colombia, fill = "gray90", color = "black") +  
+    geom_raster(aes(x = x, y = y, fill = log(mean+0.1))) + 
+    scale_fill_viridis_c(limits=c(-2.5, 5), breaks = seq(from=-2.5, to =5, by=2.5), 
+                         labels=round(exp(seq(from=-2.5, to =5, by=2.5)),0),
+                         name = "Abundance") + 
     coord_sf() +
     theme_void() +
-    guides(fill = "none")+
     theme(legend.position = "none")
   
-  pasture_raster_lunicollis <- rasterize(vect(lunicollis_pasture), pasture_base_lunicollis, field = "mean_abundance", fun = "mean")
+  pasture_raster_lunicollis <- rasterize(vect(lunicollis_pasture), pasture_base_lunicollis, field = "median_abundance", fun = "mean")
   pasture_raster_lunicollis[is.na(pasture_raster_lunicollis)] <- 0
   #  pasture_raster <- log(pasture_raster)
   #  pasture_min_value <- min(pasture_raster[!is.na(pasture_raster[]) & pasture_raster[] != -Inf], na.rm = TRUE)
@@ -205,9 +209,11 @@ library(patchwork)
   
   # mean abundance map in forest
   p2_lunicollis <- ggplot(pasture_lunicollis_df) +
-    geom_sf(data = colombia, fill = "gray", color = "black") + 
-    geom_raster(aes(x = x, y = y, fill = mean)) + 
-    scale_fill_viridis_c() +
+    geom_sf(data = colombia, fill = "gray90", color = "black") + 
+    geom_raster(aes(x = x, y = y, fill = log(mean+0.1))) + 
+    scale_fill_viridis_c(limits=c(-2.5, 5), breaks = seq(from=-2.5, to =5, by=2.5), 
+                         labels=round(exp(seq(from=-2.5, to =5, by=2.5)),0),
+                         name = "Abundance") +
     coord_sf() +
     theme_void() +
     theme(legend.position = "none")
@@ -239,7 +245,7 @@ library(patchwork)
     colombia <- st_transform(colombia, crs = AEAstring)
     dem_col <- rast("F:/Capas/America/dem/elev_raster/raster_elev_AEA.grd")
     dem_df <- as.data.frame(dem_col, xy =TRUE)
-    range_map <- st_read("F:/Doctorado/Tesis/GBIF/contorno/Dichotomius_nisus.shp")
+    range_nisus <- st_read("F:/Doctorado/Tesis/GBIF/contorno/Dichotomius_nisus.shp")
     
     elevation_dem <- ggplot() +
       geom_sf(data = colombia, fill = "gray", color = "black") +  
@@ -254,12 +260,12 @@ library(patchwork)
 #    ggsave("./elevation_dem.jpeg", plot = elevation_dem, width = 2.5, height = 3, units = "in",        
 #           dpi = 300, device = "jpeg")
     
-    range_m <- ggplot() +
+    range_nisus_plot <- ggplot() +
       geom_sf(data = colombia, fill = "gray90", color = "black") +  
-      geom_sf(data = range_map, fill = "darkblue", color = "darkblue", alpha = 0.5) +
+      geom_sf(data = range_nisus, fill = "darkblue", color = "darkblue", alpha = 0.5) +
       coord_sf() +
       theme_void() +
-      labs(title = "Distribución de Ontherus lunicollis")
+      labs(title = NULL)
     
 #    ggsave("./range_m.jpeg", plot = range_m, width = 2.5, height = 3, units = "in",        
 #           dpi = 300, device = "jpeg")          
@@ -273,7 +279,7 @@ library(patchwork)
                          resolution = 2000, 
                          crs = st_crs(study_area)$wkt)
     
-    forest_raster_nisus <- rasterize(vect(nisus_forest), forest_base_nisus, field = "mean_abundance", fun = "mean")
+    forest_raster_nisus <- rasterize(vect(nisus_forest), forest_base_nisus, field = "median_abundance", fun = "mean")
     #    forest_abundance <- global(forest_raster, fun = "sum", na.rm = TRUE)[[1]]
     #    forest_raster <- forest_raster/ forest_abundance
     forest_raster_nisus[is.na(forest_raster_nisus)] <- 0
@@ -285,15 +291,18 @@ library(patchwork)
     forest_nisus_df <- as.data.frame(forest_raster_masked_nisus, xy = TRUE)
     
     p1_nisus <- ggplot(forest_nisus_df) +
-      geom_sf(data = colombia, fill = "gray", color = "black") +  
-      geom_raster(aes(x = x, y = y, fill = mean)) + 
-      scale_fill_viridis_c() + 
+      geom_sf(data = colombia, fill = "gray90", color = "black") +  
+      geom_raster(aes(x = x, y = y, fill = log(mean+0.1))) + 
+      scale_fill_viridis_c(limits=c(-2.5, 5), breaks = seq(from=-2.5, to =5, by=2.5), 
+                           labels=round(exp(seq(from=-2.5, to =5, by=2.5)),0),
+                           name = "Predicted \n abundance") + 
       coord_sf() +
       theme_void() +
-      guides(fill = "none")+
-      theme(legend.position = "none")
+      theme(legend.position = "bottom",
+            legend.text = element_text(size = 12),
+            legend.title = element_text(size = 13))
     
-    pasture_raster_nisus <- rasterize(vect(nisus_pasture), pasture_base_nisus, field = "mean_abundance", fun = "mean")
+    pasture_raster_nisus <- rasterize(vect(nisus_pasture), pasture_base_nisus, field = "median_abundance", fun = "mean")
     pasture_raster_nisus[is.na(pasture_raster_nisus)] <- 0
     #  pasture_raster <- log(pasture_raster)
     #  pasture_min_value <- min(pasture_raster[!is.na(pasture_raster[]) & pasture_raster[] != -Inf], na.rm = TRUE)
@@ -304,9 +313,11 @@ library(patchwork)
     
     # mean abundance map in forest
     p2_nisus <- ggplot(pasture_nisus_df) +
-      geom_sf(data = colombia, fill = "gray", color = "black") + 
-      geom_raster(aes(x = x, y = y, fill = mean)) + 
-      scale_fill_viridis_c() +
+      geom_sf(data = colombia, fill = "gray90", color = "black") + 
+      geom_raster(aes(x = x, y = y, fill = log(mean+0.1))) + 
+      scale_fill_viridis_c(limits=c(-2.5, 5), breaks = seq(from=-2.5, to =5, by=2.5), 
+                           labels=round(exp(seq(from=-2.5, to =5, by=2.5)),0),
+                           name = "Predicted \n abundance") +
       coord_sf() +
       theme_void() +
       theme(legend.position = "none")
@@ -316,9 +327,9 @@ library(patchwork)
            dpi = 300, device = "jpeg")
     
     
-    fig_1_pred <- fig_1b_a / fig_1b_c
+    fig_1_pred <- fig_1b_a / fig_1b_b / fig_1b_c
     
-    ggsave("./fig_1_predA.jpeg", plot = fig_1_pred, width = 4.5, height = 6, units = "in",        
+    ggsave("./fig_1_predD.jpeg", plot = fig_1_pred, width = 4.5, height = 6, units = "in",        
            dpi = 300, device = "jpeg")
 ################################################################################      
 ################################################################################

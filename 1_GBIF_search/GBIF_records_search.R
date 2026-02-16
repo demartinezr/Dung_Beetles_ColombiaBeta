@@ -1,5 +1,12 @@
+# This script processes a dung beetle (Scarabaeinae) dataset by extracting species 
+# and subspecies names of the abundance data set, identifying their synonyms using 
+# the GBIF Backbone Taxonomy,  and compiling a unified list of all taxa. It then 
+# queries GBIF to download georeferenced occurrence records, cleans and formats the  
+# data, updates scientific names to accepted taxonomy, removes duplicated coordinate 
+# records, and produces a harmonized dataset for generating species range maps.
+
 # Directory
-    setwd("C:/Users/Dell-PC/Dropbox/CO_DBdata/GBIF_data")
+    setwd("C:/Users/PC/Dropbox/CO_DBdata/GBIF_data")
 # Packages
     library(readxl)
     library(rgbif)
@@ -10,7 +17,7 @@
     library(sf)
 
 # Dung beetles Dataset #
-    IBDdata <- read_excel("C:/Users/Dell-PC/Dropbox/CO_DBdata/abundance/Scarabaeinae_database_2024.xlsx", sheet="Scarabaeinae_database_2024")
+    IBDdata <- read_excel("C:/Users/PC/Dropbox/CO_DBdata/abundance/Scarabaeinae_database_2024.xlsx", sheet="Scarabaeinae_database_2024")
 #
 # List of species and subspecies #
     species_list <- data.frame(subset(IBDdata, taxonRank == "Species"))

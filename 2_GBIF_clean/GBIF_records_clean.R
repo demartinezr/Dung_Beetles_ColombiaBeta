@@ -1,3 +1,12 @@
+# This script cleans, standardizes, and integrates species records from multiple 
+# sources, including GBIF and biological collections from IAvH-E, MEFLG, ICN, UPTC, 
+# and CEUN-PSO, to produce a unified georeferenced dataset. It updates species names 
+# based on the GBIF Backbone Taxonomy, removes duplicated and erroneous coordinates, 
+# incorporates validated morphospecies records, and applies targeted corrections for 
+# specific taxa. The script then merges cleaned species and morphospecies occurrences 
+# from all sources into a final consolidated dataset suitable for generating accurate 
+# species range maps.
+
 setwd("C:/Users/Dell-PC/Dropbox/CO_DBdata/GBIF_data")
 # packages
   library(dplyr)

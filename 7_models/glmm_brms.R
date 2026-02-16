@@ -1,4 +1,5 @@
 # Generalized linear mixed models and bayesian analysis
+setwd("C:/Users/PC/Dropbox/CO_DBdata")
 library(glmmTMB)
 library(dplyr)
 library(ggplot2)
@@ -196,10 +197,10 @@ db_mod_abundance <-
       refresh = 10)
 
 #saveRDS(db_mod_abundance, "C:/Users/Dell-PC/Dropbox/CO_DBdata/db_mod_abundance.rds")
-db_mod_abundance <-readRDS("C:/Users/Dell-PC/Dropbox/CO_DBdata/db_mod_abundance.rds")
+db_mod_abundance <-readRDS("C:/Users/PC/Dropbox/CO_DBdata/db_mod_abundance.rds")
 
 summary(db_mod_abundance)
-
+prior_summary(db_mod_abundance)
 
 library(brms)
 

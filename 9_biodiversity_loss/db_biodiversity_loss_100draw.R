@@ -257,7 +257,7 @@ fig_2b <- ggplot(abundance_scales, aes(x = reorder(scale, avg_logratio), y = avg
 
      ggsave("./abundance_plot.jpg", plot = abundance_plot, width = 6.5, height = 4, units = "in",        
             dpi = 300, device = "jpeg")
-
+     
 ########
 #-- maps 
   # log-ratios map
@@ -304,31 +304,42 @@ log_maps <- ratio_map + richness_map
 ggsave("./log_maps.jpeg", plot = log_maps, width = 8.5, height = 4, units = "in",        
        dpi = 300, device = "jpeg")
 #########################################################
-# ecoregions comparison across the posterior distribution 
-  
+# ecoregions comparison across the posterior distribution
+
+# data  
+# local scale 2 x 2km
+cell_ratios_eco <- bind_rows(cell_ratios_list, .id = "draw_col")
+cell_ratios_eco <- cell_ratios_eco %>%
+  group_by(draw_col, ecoregions) %>%
+  summarise(avg_logratio = mean(med_logratio, na.rm = T))
+# ecoregion scale
+ecoregion_ratios_eco <- bind_rows(lapply(ecoregion_ratios_list, function(draw) {
+  bind_rows(draw, .id = "ecoregion")
+}), .id = "draw_col")
+
   # Mean ecoregion ratios
-    ecoregion_mean <- ecoregion_ratios_df %>%
+    ecoregion_mean <- ecoregion_ratios_eco %>%
       group_by(ecoregion) %>%
       summarise(med_logratio_mean = round(mean(med_logratio, na.rm = T),2),
                 CI_5 = round(quantile(med_logratio, probs = 0.05, na.rm = TRUE),2),
                 CI_95 = round(quantile(med_logratio, probs = 0.95, na.rm = TRUE),2))
     
   # 25th ecoregion ratios
-    ecoregion_p25 <- ecoregion_ratios_df %>%
+    ecoregion_p25 <- ecoregion_ratios_eco %>%
       group_by(ecoregion) %>%
       summarise(p25_logratio_mean = round(exp(mean(p_25_logratio, na.rm = T)),2),
                 CI_5 = round(quantile(p_25_logratio, probs = 0.05, na.rm = TRUE),2),
                 CI_95 = round(quantile(p_25_logratio, probs = 0.95, na.rm = TRUE),2))
   
   # 75th ecoregion ratios
-    ecoregion_p75 <- ecoregion_ratios_df %>%
+    ecoregion_p75 <- ecoregion_ratios_eco %>%
       group_by(ecoregion) %>%
       summarise(p_75_logratio_mean = round(mean(p_75_logratio, na.rm = T),2),
                 CI_5 = round(quantile(p_75_logratio, probs = 0.05, na.rm = TRUE),2),
                 CI_95 = round(quantile(p_75_logratio, probs = 0.95, na.rm = TRUE),2))
     
   # Merge ecoregion ratios with Pan-Colombia ratios
-  ratios_df <- bind_rows(ecoregion_ratios_df, colombia_ratios_df)
+  ratios_df <- bind_rows(ecoregion_ratios_eco, colombia_ratios_df)
   
   regions <- c("Eastern Cordillera real montane forests",
                "Magdalena-Urabá moist forests",
@@ -549,7 +560,7 @@ ggsave("./log_maps.jpeg", plot = log_maps, width = 8.5, height = 4, units = "in"
 #------------------- Plot Relative difference cummulative
     
   # get summaries for metrics by ecoregions and near national sensitivities
-    ratios_summary_df <- ecoregion_ratios_df %>%
+    ratios_summary_df <- ecoregion_ratios_eco %>%
       group_by(ecoregion) %>%
       summarise(
         avg_ratio = mean(avg_ratio, na.rm = TRUE),
@@ -568,13 +579,14 @@ ggsave("./log_maps.jpeg", plot = log_maps, width = 8.5, height = 4, units = "in"
              ecoregion_order = row_number())  
     
     colombia_ratios_df
+    ratios_summary_df
     
   # select draws
   draws <- paste0("abun__draw_", 30 * c(1: 100))
   
   # random sequences
   set.seed(123)
-  sequences <- replicate(1000, sample(unique(ecoregion_ratios_df$ecoregion)), simplify = FALSE)
+  sequences <- replicate(1000, sample(unique(ecoregion_ratios_eco$ecoregion)), simplify = FALSE)
   
   # loop for postrior distribution metrics
   
@@ -584,7 +596,7 @@ ggsave("./log_maps.jpeg", plot = log_maps, width = 8.5, height = 4, units = "in"
     cat("draw:", draw, "\n")
     
     col_draw <- colombia_ratios_df[colombia_ratios_df$draw_col == draw, ]
-    ecoregion_data <- ecoregion_ratios_df[ecoregion_ratios_df$draw_col == draw, ]
+    ecoregion_data <- ecoregion_ratios_eco[ecoregion_ratios_eco$draw_col == draw, ]
     
     for (j in seq_along(sequences)) {
       cat("sequence", j, "\n")
@@ -681,6 +693,6 @@ ggsave("./log_maps.jpeg", plot = log_maps, width = 8.5, height = 4, units = "in"
              (plot_75 | plot_75_dif | plot_p75_cum) + 
              plot_layout(widths = c(1.5, 1, 1), heights = c(1, 1, 1))
           
-  ggsave("./fig_4.jpeg", plot = fig_4, width = 9, height = 9, units = "in",        
-         dpi = 300, device = "jpeg")
+  ggsave("./fig_4.pdf", plot = fig_4, width = 9, height = 9, units = "in",        
+         dpi = 300)
   

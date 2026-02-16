@@ -1,6 +1,15 @@
-# Function for obtaining geographic ranges based on GBIF records, ecoregions, and 
-# altitudinal ranges (alos palsar DEM 30m) for species.
-#
+# This script generates geographic range polygons for dung beetle species using 
+# GBIF and biological collection records, regional geographic divisions, and elevation 
+# limits derived from a 30-m resolution DEM. For each species, the workflow constructs 
+# a geometry based on the number of available occurrence points: a 10-km buffer around 
+# a single point, a 10-km buffered line when only two records are present, and a 10-km 
+# buffered convex hull when three or more records are available. These preliminary 
+# ranges are clipped to the corresponding geographic divisions and further refined by 
+# applying species-specific altitudinal limits, defined as the minimum and maximum 
+# recorded elevations expanded by ±100 meters to account for local uncertainty. 
+# The resulting elevation-filtered polygons represent the estimated geographic range 
+# and are exported as ESRI Shapefiles.
+
   setwd("C:/Users/PC/Dropbox/CO_DBdata")
 #
 # R packages
@@ -15,6 +24,17 @@
   records <- readRDS("./GBIF_data/records_combined_ele.rds")
   dem <- rast("F:/Capas/America/dem/elev_raster/raster_elev.grd")
   source("F:/repositorio/Dung_Beetles_ColombiaBeta/3_Geographic_range/mainland/mainland.R")
+  
+  records_summary <- records %>%
+    count(scientificName1, source) %>%
+    pivot_wider(names_from=source,
+                values_from = n,
+                values_fill = 0) %>%
+    mutate(total = rowSums(across(where(is.numeric))))
+  
+  write.table(records_summary, file="records_summary.txt",
+              sep=",", row.names = FALSE, quote=FALSE)
+  
   # Get unique species and limit to 243
   species_subset <- sort(unique(records$scientificName1))[1:2]
   

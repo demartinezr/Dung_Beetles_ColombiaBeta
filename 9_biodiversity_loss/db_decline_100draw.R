@@ -128,8 +128,8 @@ draw_summary_ecoregions_mod <- draw_summary_ecoregions %>%
 
 draw_summary_ecoregions_mod$draw <- gsub("ratio_abun__draw_(\\d+)_pasture1", "ratio__draw_\\1", draw_summary_ecoregions_mod$draw)
 
-draw_summary_ecoregions_mod$ecoregions <- gsub(" forests", "", draw_summary_ecoregions_mod$ecoregions)
-draw_summary_ecoregions_mod$ecoregions <- recode(draw_summary_ecoregions_mod$ecoregions,
+draw_summary_ecoregions$ecoregions <- gsub(" forests", "", draw_summary_ecoregions$ecoregions)
+draw_summary_ecoregions$ecoregions <- recode(draw_summary_ecoregions$ecoregions,
                                              "Apure-Villavicencio dry"         = "Villavicencio dry",
                                              "Cauca Valley montane"            = "Cauca montane",
                                              "Caqueta moist"                   ="Caquetá moist",   
@@ -215,17 +215,6 @@ fig_2a <- ggplot(richness_scales, aes(x = reorder(scale, prop_losers), y = prop_
         axis.text.y = element_text(size = 12, color = "black"),
         axis.text.x = element_blank())
 
-
-grob_hist <- ggplotGrob(fig_1d)
-
-final_plot <- fig_2a +
-  annotation_custom(
-    grob = grob_hist,
-    xmin = 2, xmax = 3.6,     # Ajusta según ubicación deseada
-    ymin = 0.18, ymax = 0.65   # Ajusta el tamaño
-  )
-
- 
 ggsave("./richness_plot.jpg", plot = richness_plot, width = 6.5, height = 4, units = "in",        
        dpi = 300, device = "jpeg")
 
@@ -404,23 +393,6 @@ decline_all <- decline_all %>%
   mutate(ecoregion = factor(ecoregion, levels = ecoregion_levels))
 
 
-#fig_2b <- ggplot(decline_all, aes(x = ecoregion, y = decline, fill = scale)) +
-#              geom_violin(trim = FALSE, alpha = 0.4, width = 0.9, position = position_dodge(width = 0.8), linewidth = 0.5) +
-#              geom_boxplot(width = 0.2, color = "black", alpha = 0.4, outlier.shape = NA, position = position_dodge(width = 0.8), linewidth = 0.5) +
-#              scale_fill_viridis_d() +           
-#              theme_bw() + 
-#              scale_y_continuous(limits=c(0.4, 1)) +
-#              theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 10, color="black"),
-#                    axis.text.y = element_text(size = 10, color="black"), 
-#                    axis.title.x = element_text(size = 11),
-#                    axis.title.y = element_text(size = 11),
-#                    legend.position = "bottom",
-#                    legend.text = element_text(size = 11),
-#                    legend.title = element_text(size = 12)) +
-#              labs(x = NULL,
-#                   y = "Proportion of declining species") +
-#              geom_vline(xintercept = seq(1, length(ecoregion_levels) - 1) + 0.5, 
-#                         color = "gray40", linetype = "solid", linewidth = 0.4) + coord_flip()
 colors_scales <- c("Local"= "#762a83",
                    "Ecoregion" = "#1b7837",
                    "Near national" = "yellow")
@@ -430,7 +402,7 @@ decline_all <- decline_all %>%
   mutate(Scale = recode(Scale,             
                         "Regional" = "Ecoregion"))
 
-fig_2c <- ggplot(decline_all, aes(x = decline, y = reorder(ecoregion, -decline), fill = Scale)) +
+fig_3 <- ggplot(decline_all, aes(x = decline, y = reorder(ecoregion, -decline), fill = Scale)) +
   geom_density_ridges(alpha = 0.7, scale = 1.5)  +
   geom_vline(xintercept = 0.86, linetype = "dashed", color = "gray30", linewidth = 0.7) +
   scale_fill_manual(values = colors_scales) +
@@ -446,9 +418,8 @@ fig_2c <- ggplot(decline_all, aes(x = decline, y = reorder(ecoregion, -decline),
   scale_x_continuous(limits=c(0.4, 1)) +
   stat_density(geom = "line", position = "identity", aes(x = decline), kernel = "gaussian")
 
-
-ggsave("./fig_3.jpg", plot = fig_2c, width = 7, height = 6, units = "in",        
-       dpi = 300, device = "jpeg")
+ggsave("./fig_3.pdf", plot = fig_3, width = 7, height = 6, units = "in",        
+       dpi = 300)
 
 diff_all <- rbind(mean_decline, ecoregion_mean_decline)
 
@@ -484,7 +455,7 @@ fig_4b <- ggplot(diff_all, aes(x = difference, y = reorder(ecoregion, difference
   scale_x_continuous(limits=c(0.75, 1.75)) +
   stat_density(geom = "line", position = "identity", aes(x = difference), kernel = "gaussian")
 
-fig_2 <- final_plot / fig_2b +
+fig_2 <- fig_2a / fig_2b +
   plot_layout(heights = c(1, 1))
 
 fig_2 <- cowplot::plot_grid(
@@ -496,8 +467,8 @@ fig_2 <- cowplot::plot_grid(
 )
 
 
-ggsave("./fig_2.jpg", plot = fig_2, width = 6, height = 7, units = "in",        
-       dpi = 300, device = "jpeg")
+ggsave("./fig_2.pdf", plot = fig_2, width = 6, height = 7, units = "in",        
+       dpi = 300)
 
 
 decline_summary <- decline_all %>%
