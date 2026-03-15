@@ -1,0 +1,126 @@
+# ------------------------------------------------------------------------------
+# Morphometric measurements processing for dung beetle functional traits
+#
+# This script compiles and standardizes morphometric measurements for
+# 243 dung beetle species/morphospecies from Colombia using data obtained
+# from multiple measurement campaigns (2021 dataset and standardized
+# photographs processed in 2024).
+#
+# Morphometric measurements were obtained from calibrated images using
+# ImageJ and include body dimensions and front and rear leg lengths.
+# These measurements are used to calculate the morphometric functional
+# traits analyzed in the manuscript:
+#
+# 1. Body size  = body length × elytra width
+# 2. Leg ratio  = (front femur length + front tibia length) /
+#                 (rear femur length + rear tibia length + rear spur length)
+#
+# Measurements from multiple photographs per specimen are averaged at the
+# individual level and subsequently aggregated to obtain species-level
+# trait means used in downstream analyses.
+#
+# Additional morphometric proportions are also calculated to explore
+# scaling relationships among body parts but were not used in the
+# analyses presented in the manuscript.
+# ------------------------------------------------------------------------------
+setwd("C:/Users/Dell-PC/Dropbox/CO_DBdata")
+#
+# packages
+library(readxl)
+library(dplyr)
+#
+# Load morphometric measurements from standardized photographs (2024 dataset)
+  data_new <- read_excel("./traits/morphometrics/template_sheet_morph_traits_2024.xlsx", sheet="Sheet1")
+  data_new$backtibialength <- as.numeric(data_new$backtibialength)
+  data_new$backspurlength <- as.numeric(data_new$backspurlength)
+# filter and mean by individual_id_number para elytrawidth, bodywidth, elytralength, bodylength
+  mean_body_elytra <- data_new  %>%
+  filter(grepl("_1|_2$", photo_number)) %>%
+  group_by(scientificName, individual_id_number) %>%
+  summarize(across(c(elytrawidth, bodywidth, elytralength, bodylength), mean, na.rm = TRUE), .groups = "drop")
+# filter and mean by individual_id_number para frontfemurlength, fronttibialength, backfemurlength, backtibialength, backspurlength
+  mean_legs <- data_new %>%
+  filter(grepl("_3|_4$", photo_number)) %>%
+  group_by(scientificName, individual_id_number) %>%
+  summarize(across(c(frontfemurlength, fronttibialength, backfemurlength, backtibialength, backspurlength), mean, na.rm = TRUE), .groups = "drop")
+# merge by individual_id_number y scientificName
+  means_new <- merge(mean_body_elytra, mean_legs, by = c("scientificName", "individual_id_number"))
+#
+# dataset 2021 morphometrics
+  data_2021 <- read.csv("./traits/morphometrics/output_DB_rawdata_alltraits_combinedMASTER.csv", header =TRUE, sep =";")
+#
+# Intersect colnames between data frames
+  common_cols <- intersect(names(data_2021), names(means_new))
+# select common columns between data frames
+  data_2021_common <- data_2021 %>%
+  select(all_of(common_cols))
+  means_new_common <- means_new %>%
+  select(all_of(common_cols))
+# Join dataframes based on common columns
+  morphometrics <- bind_rows(data_2021_common, means_new_common)
+  morphometrics <- morphometrics %>%
+  arrange(scientificName)
+# traits body size and leg ratio measurements
+  morphometrics$bodysize <- as.numeric(morphometrics$elytrawidth*
+                                         morphometrics$bodylength)
+  morphometrics$legratio <- as.numeric((morphometrics$frontfemurlength+
+       morphometrics$fronttibialength)/
+         (morphometrics$backfemurlength+
+          morphometrics$backtibialength+
+          morphometrics$backspurlength))
+
+# traits 'bodyShape', 'elytraShape', 'frontfemurProportion', 'fronttibiaProportion', 'backfemurProportion', 'backtibiaProportion', 'backspurProportion' Measurements 
+# (bodyShape)
+morphometrics$bodyShape <- as.numeric(morphometrics$bodywidth / morphometrics$bodylength)
+
+# (elytraShape)
+morphometrics$elytraShape <- as.numeric(morphometrics$elytrawidth / morphometrics$elytralength)
+
+# (frontfemurProportion)
+morphometrics$frontfemurProportion <- as.numeric(morphometrics$frontfemurlength / morphometrics$bodylength)
+
+# (fronttibiaProportion)
+morphometrics$fronttibiaProportion <- as.numeric(morphometrics$fronttibialength / morphometrics$bodylength)
+
+# (backfemurProportion)
+morphometrics$backfemurProportion <- as.numeric(morphometrics$backfemurlength / morphometrics$bodylength)
+
+# (backtibiaProportion)
+morphometrics$backtibiaProportion <- as.numeric(morphometrics$backtibialength / morphometrics$bodylength)
+
+# (backspurProportion)
+morphometrics$backspurProportion <- as.numeric(morphometrics$backspurlength / morphometrics$bodylength)
+
+
+# mean id duplicates (messurements by DEMR and Felicity)  
+  morphometrics <- morphometrics %>%
+    group_by(individual_id_number) %>%
+    summarise(
+      scientificName = first(scientificName),
+      across(c(elytrawidth, elytralength, bodylength, bodywidth,
+                       frontfemurlength, fronttibialength, backfemurlength, 
+                       backtibialength, backspurlength, bodysize, legratio, bodyShape, elytraShape, frontfemurProportion, fronttibiaProportion, backfemurProportion, backtibiaProportion, backspurProportion), 
+                     mean, na.rm = TRUE))
+  write.table(morphometrics, "./traits/morphometrics/output_rawdata_alltraits_2024.txt")
+  morphometrics <- read.table("./traits/morphometrics/output_rawdata_alltraits_2024.txt", header=TRUE)
+  
+  # traits body size and leg ratio means
+  morphometrics_mean <- morphometrics %>%
+    group_by(scientificName) %>%
+    summarise(
+      across(
+        .cols = c(bodysize, legratio),
+        .fns = ~ mean(.x[!is.na(.x) & !is.nan(.x) & !is.infinite(.x) & .x != 0], na.rm = TRUE),
+        .names = "{col}"
+      )
+    ) %>%
+    ungroup()
+  write.table(morphometrics_mean, "./traits/morphometrics/morphometrics_mean.txt")
+#
+# Merge morphometrics measurements and behaviour traits in Dung beetles data set
+# DB_data <- read_excel("C:./abundance/Scarabaeinae_database_2024.xlsx", sheet="Scarabaeinae_database_2024")
+# behaviour <- read_excel("./traits/behaviour/DB_Distributions_traits_2024.xlsx", sheet="DB_Distributions_traits")
+# behaviour <- behaviour[c("scientificName", "nest_guild", "diet_range", "activity")]
+# DB_data <- left_join(DB_data, morphometrics_mean, by = "scientificName") 
+# DB_data <- left_join(DB_data, behaviour, by = "scientificName")
+ 
